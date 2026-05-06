@@ -14,7 +14,136 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      heartbeats: {
+        Row: {
+          checked_at: string
+          error_message: string | null
+          id: string
+          monitor_id: string
+          response_time_ms: number | null
+          status: Database["public"]["Enums"]["monitor_status"]
+          status_code: number | null
+        }
+        Insert: {
+          checked_at?: string
+          error_message?: string | null
+          id?: string
+          monitor_id: string
+          response_time_ms?: number | null
+          status: Database["public"]["Enums"]["monitor_status"]
+          status_code?: number | null
+        }
+        Update: {
+          checked_at?: string
+          error_message?: string | null
+          id?: string
+          monitor_id?: string
+          response_time_ms?: number | null
+          status?: Database["public"]["Enums"]["monitor_status"]
+          status_code?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "heartbeats_monitor_id_fkey"
+            columns: ["monitor_id"]
+            isOneToOne: false
+            referencedRelation: "monitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incidents: {
+        Row: {
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          monitor_id: string
+          reason: string | null
+          started_at: string
+        }
+        Insert: {
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          monitor_id: string
+          reason?: string | null
+          started_at?: string
+        }
+        Update: {
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          monitor_id?: string
+          reason?: string | null
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidents_monitor_id_fkey"
+            columns: ["monitor_id"]
+            isOneToOne: false
+            referencedRelation: "monitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monitors: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          expected_status_codes: string
+          id: string
+          interval_minutes: number
+          keyword: string | null
+          keyword_match:
+            | Database["public"]["Enums"]["keyword_match_type"]
+            | null
+          last_checked_at: string | null
+          last_status: Database["public"]["Enums"]["monitor_status"]
+          name: string
+          target: string
+          timeout_seconds: number
+          type: Database["public"]["Enums"]["monitor_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          expected_status_codes?: string
+          id?: string
+          interval_minutes?: number
+          keyword?: string | null
+          keyword_match?:
+            | Database["public"]["Enums"]["keyword_match_type"]
+            | null
+          last_checked_at?: string | null
+          last_status?: Database["public"]["Enums"]["monitor_status"]
+          name: string
+          target: string
+          timeout_seconds?: number
+          type: Database["public"]["Enums"]["monitor_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          expected_status_codes?: string
+          id?: string
+          interval_minutes?: number
+          keyword?: string | null
+          keyword_match?:
+            | Database["public"]["Enums"]["keyword_match_type"]
+            | null
+          last_checked_at?: string | null
+          last_status?: Database["public"]["Enums"]["monitor_status"]
+          name?: string
+          target?: string
+          timeout_seconds?: number
+          type?: Database["public"]["Enums"]["monitor_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +152,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      keyword_match_type: "contains" | "not_contains"
+      monitor_status: "up" | "down" | "pending"
+      monitor_type: "http" | "tcp" | "ping" | "keyword"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +281,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      keyword_match_type: ["contains", "not_contains"],
+      monitor_status: ["up", "down", "pending"],
+      monitor_type: ["http", "tcp", "ping", "keyword"],
+    },
   },
 } as const
