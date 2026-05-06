@@ -192,7 +192,7 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
             <Label htmlFor="timeout">超时（秒）</Label>
             <Input id="timeout" type="number" min={1} max={60} {...form.register("timeout_seconds")} />
           </div>
-          {isHttpish && (
+          {isHttp && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="codes">期望状态码</Label>
@@ -206,33 +206,7 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
           )}
         </div>
 
-        {type === "keyword" && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_200px]">
-            <div className="space-y-2">
-              <Label htmlFor="keyword">关键字 / 正则</Label>
-              <Input id="keyword" {...form.register("keyword")} placeholder="例如：欢迎 或 ^OK$" />
-              {form.formState.errors.keyword && (
-                <p className="text-sm text-destructive">{form.formState.errors.keyword.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>匹配方式</Label>
-              <Select
-                value={form.watch("match_mode")}
-                onValueChange={(v) => form.setValue("match_mode", v as FormValues["match_mode"])}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="contains">应包含</SelectItem>
-                  <SelectItem value="not_contains">不应包含</SelectItem>
-                  <SelectItem value="regex">正则匹配</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-
-        {isHttpish && (
+        {isHttp && (
           <Accordion type="single" collapsible>
             <AccordionItem value="adv">
               <AccordionTrigger>高级 HTTP 设置</AccordionTrigger>
