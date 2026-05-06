@@ -51,8 +51,10 @@ export default {
           up: "hsl(var(--status-up))",
           down: "hsl(var(--status-down))",
           pending: "hsl(var(--status-pending))",
+          degraded: "hsl(var(--status-degraded))",
           "up-foreground": "hsl(var(--status-up-foreground))",
           "down-foreground": "hsl(var(--status-down-foreground))",
+          "degraded-foreground": "hsl(var(--status-degraded-foreground))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
