@@ -19,6 +19,7 @@ export async function persistResult(sb: SupabaseClient, monitor: Monitor & { las
     response_time_ms: result.response_time_ms,
     status_code: result.status_code,
     error_message: result.error_message,
+    cert_days_remaining: result.cert_days_remaining ?? null,
   });
 
   await sb.from("monitors").update({
@@ -26,14 +27,14 @@ export async function persistResult(sb: SupabaseClient, monitor: Monitor & { las
     last_status: result.status,
   }).eq("id", monitor.id);
 
-  // Manage incidents: open on transition up→down, close on down→up.
+  // Incidents only on hard down (degraded does not open an incident).
   if (monitor.last_status !== "down" && result.status === "down") {
     await sb.from("incidents").insert({
       monitor_id: monitor.id,
       started_at: checkedAt,
       reason: result.error_message ?? "Check failed",
     });
-  } else if (monitor.last_status === "down" && result.status === "up") {
+  } else if (monitor.last_status === "down" && result.status !== "down") {
     const { data: open } = await sb
       .from("incidents")
       .select("id, started_at")
