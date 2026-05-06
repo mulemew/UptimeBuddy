@@ -1,59 +1,71 @@
 ## 目标
 
-打造一个类似 Uptime Kuma 的网站监控工具：用户添加监控目标 → 后端定时检查 → 记录每次结果 → 前端展示在线率、响应时间、最近事件，并提供一个公开状态页。单用户使用，无需登录。
+扩展现有 HTTP/HTTPS 监控能力，从简单 GET + 状态码 + 关键字检查，升级为生产级 HTTP 探测器，覆盖请求方法、自定义 Headers/Body、SSL 校验、正则匹配、响应时间降级等。
 
-## 功能范围
+## 数据库变更
 
-**监控类型**
-- HTTP/HTTPS：请求 URL，校验状态码（默认 2xx/3xx 视为正常），记录响应时间
-- TCP 端口：通过 Deno `Deno.connect` 测试主机+端口连通性
-- Ping (ICMP)：边缘函数无法发 ICMP，**用 HTTP HEAD 请求到主机 80/443 端口模拟**，UI 中明确标注"HTTP-based ping"
-- 关键字检查：HTTP 请求后检查响应正文是否包含/不包含指定关键字
+`monitors` 表新增字段：
 
-**每项监控可配置**
-- 名称、类型、目标（URL / host:port）
-- 检查间隔：1 / 2 / 5 / 10 / 15 / 30 / 60 分钟
-- 超时时间（秒，默认 10）
-- 关键字（仅关键字类型）：文本 + 包含/不包含
-- 启用/暂停开关
+- `http_method` text default `'GET'`（GET/POST/HEAD/PUT/PATCH/DELETE）
+- `http_body` text nullable（请求体原文）
+- `http_body_type` text nullable（json/xml/text/form）
+- `http_headers` jsonb default `'{}'`（键值对）
+- `follow_redirects` boolean default `true`
+- `ignore_tls_errors` boolean default `false`
+- `cert_expiry_warn_days` integer default `14`（0 表示不监控证书）
+- `match_mode` text default `'contains'`（contains / not_contains / regex）—— 取代旧的 `keyword_match`，并对 regex 复用同一字段
+- `degraded_threshold_ms` integer nullable（>0 时启用降级判定）
 
-**展示**
-- Dashboard：监控卡片网格，显示当前状态（绿/红/灰）、最近 30 次检查的小色块条、24h 在线率、平均响应时间
-- 详情页：响应时间折线图（最近 24h / 7d / 30d）、状态时间线、事件列表（宕机开始/恢复时间、持续时长）
-- 公开状态页 `/status`：精简版总览，可分享
+`heartbeats` 表新增：
 
-## 技术方案（技术细节）
+- `cert_days_remaining` integer nullable
+- 状态枚举从 `up/down` 扩展为 `up/down/degraded`（新增 enum 值）
 
-**后端：Lovable Cloud**
+`monitors.last_status` 同样支持 `degraded`。
 
-数据库表：
-- `monitors`：id, name, type(http/tcp/ping/keyword), target, interval_minutes, timeout_seconds, keyword, keyword_match(contains/not_contains), expected_status_codes, enabled, created_at
-- `heartbeats`：id, monitor_id, checked_at, status(up/down), response_time_ms, status_code, error_message —— 索引 (monitor_id, checked_at desc)
-- `incidents`：id, monitor_id, started_at, ended_at, duration_seconds, reason
+迁移策略：保留旧 `keyword_match` 字段，初始化时把数据复制到新 `match_mode`；前端不再写旧字段。
 
-单用户模式：所有表无 user_id，但仍启用 RLS 并允许 anon 读写（明确标注单用户）。
+## 边缘函数变更（`supabase/functions/_shared/checkers.ts`）
 
-**Edge Functions**
-- `run-checks`：被 cron 每分钟触发。读取所有 enabled 监控，按 `last_checked_at + interval` 判断是否到点；对到点的监控并发执行检查，写入 heartbeats，并维护 incidents（状态翻转时开/闭事件）。使用 `Promise.allSettled` + `AbortController` 控制超时
-- `check-now`：手动触发单个监控立即检查（前端"立即检查"按钮）
+`checkHttp` 重构：
 
-**Cron 调度**：通过 `pg_cron` + `pg_net` 在数据库迁移中创建一个每分钟调用 `run-checks` 函数的 job。
+1. 用 `monitor.http_method`（HEAD 时不读 body；GET 视 keyword 是否存在再决定读 body）
+2. 注入 `monitor.http_headers` 与 `monitor.http_body`（按 body_type 设置 Content-Type 默认值，用户显式 header 优先）
+3. `redirect: monitor.follow_redirects ? 'follow' : 'manual'`；非 follow 时 3xx 视为正常状态码
+4. TLS 忽略：Deno fetch 不支持禁用证书校验，因此 `ignore_tls_errors` 仅在错误信息含 `certificate` / `TLS` 时把 down 转 up（标注降级原因）—— UI 中说明限制
+5. 证书到期：HTTPS 目标每次检查时通过 `Deno.connectTls` 抓取 `peerCertificates`，计算剩余天数；少于 `cert_expiry_warn_days` 标记 degraded
+6. 匹配：`match_mode` = contains / not_contains / regex（regex 用 `new RegExp(keyword)`，编译失败 → down）
+7. 响应时间降级：状态码与关键字均通过，但 `elapsed > degraded_threshold_ms` → status = degraded
 
-**前端**
-- 路由：`/`（Dashboard）、`/monitors/new`、`/monitors/:id`（详情）、`/status`（公开状态页）
-- 组件：MonitorCard、StatusBar（30 格心跳条）、ResponseTimeChart（recharts，已有）、IncidentList、MonitorForm
-- 数据：使用 `@tanstack/react-query`（已安装）+ Supabase client；详情页通过 Realtime 订阅 heartbeats 实时刷新
-- 设计系统：扩展 `index.css` 加入语义化状态色 `--status-up`（绿）、`--status-down`（红）、`--status-pending`（灰），全部 HSL；卡片采用现有 shadcn Card
+`persist.ts` 调整：incident 仅在 `down` 时开/关，`degraded` 不开 incident 但记录心跳；`monitors.last_status` 存 up/down/degraded。
 
-## 实施步骤
+## 前端变更
 
-1. 启用 Lovable Cloud
-2. 创建数据库表 + RLS + pg_cron 调度迁移
-3. 编写 `run-checks` 与 `check-now` 边缘函数（含四种检查器）
-4. 扩展设计系统（状态色 token）
-5. 构建前端：Dashboard、监控表单、详情页、状态页、路由接入
-6. 端到端验证：添加几个真实站点，确认 cron 落库、UI 实时更新
+**`MonitorForm.tsx`**：HTTP / Keyword 类型下展开"高级"折叠面板（shadcn `Accordion`）：
 
-## 范围之外（可后续添加）
+- Method 下拉
+- Headers 编辑器（动态键值对行，新增/删除按钮）
+- Body 编辑器（Textarea + body_type 下拉），HEAD/GET 隐藏
+- 跟随重定向开关
+- 忽略 TLS 错误开关 + 证书预警天数输入
+- 匹配模式下拉（contains / not_contains / regex）替换原 keyword_match
+- 响应时间降级阈值输入
 
-告警通知（邮件/Webhook）、多用户、SSL 证书到期监控、维护窗口、数据保留策略 UI。
+Zod 校验：headers 不超 30 项、键非空；regex 模式下尝试编译；body 限制 32KB。
+
+**状态色**：`index.css` / `tailwind.config.ts` 新增 `--status-degraded`（琥珀色）。`StatusBadge`、`StatusBar`、`MonitorCard` 支持新状态。
+
+**`MonitorDetail.tsx`**：心跳列表展示证书剩余天数（HTTPS）；事件列表保持原样（degraded 不计入）。
+
+## 范围之外
+
+POST 文件上传、mTLS 客户端证书、Cookie Jar、HTTP/2 帧级指标。
+
+## 实施顺序
+
+1. 数据库迁移（字段 + degraded enum 值）
+2. 重写 checkers.ts 的 HTTP 分支 + 证书检查逻辑 + persist 状态写入
+3. 设计系统加 degraded 色 token
+4. 重构 MonitorForm 加高级面板
+5. 更新 StatusBadge / StatusBar / MonitorCard / MonitorDetail 渲染 degraded 与证书天数
+6. 端到端验证（http://httpbin.org 测 POST/Headers/Status；过期证书测试可选）
