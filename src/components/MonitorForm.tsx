@@ -283,6 +283,33 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
                   </div>
                 )}
 
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label className="text-sm">关键字判定（可选）</Label>
+                  <p className="text-xs text-muted-foreground">填写后会读取响应正文进行匹配；留空则跳过</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
+                    <div className="space-y-1">
+                      <Input
+                        {...form.register("keyword")}
+                        placeholder="例如：欢迎 或 ^OK$"
+                      />
+                      {form.formState.errors.keyword && (
+                        <p className="text-sm text-destructive">{form.formState.errors.keyword.message}</p>
+                      )}
+                    </div>
+                    <Select
+                      value={form.watch("match_mode")}
+                      onValueChange={(v) => form.setValue("match_mode", v as FormValues["match_mode"])}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="contains">应包含</SelectItem>
+                        <SelectItem value="not_contains">不应包含</SelectItem>
+                        <SelectItem value="regex">正则匹配</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex items-center justify-between rounded-md border p-3">
                     <div>
