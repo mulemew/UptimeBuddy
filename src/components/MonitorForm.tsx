@@ -23,7 +23,7 @@ const headerRow = z.object({
 
 const schema = z.object({
   name: z.string().min(1, "请输入名称").max(100),
-  type: z.enum(["http", "keyword", "tcp", "ping"]),
+  type: z.enum(["http", "tcp", "ping"]),
   target: z.string().min(1, "请输入目标"),
   interval_minutes: z.coerce.number().int().min(1).max(1440),
   timeout_seconds: z.coerce.number().int().min(1).max(60),
