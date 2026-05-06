@@ -53,11 +53,11 @@ function headersObjToArr(h: unknown): { key: string; value: string }[] {
   return Object.entries(h as Record<string, unknown>).map(([k, v]) => ({ key: k, value: String(v ?? "") }));
 }
 
-function headersArrToObj(arr: { key: string; value: string }[]): Record<string, string> {
+function headersArrToObj(arr: { key?: string; value?: string }[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const { key, value } of arr) {
-    const k = key.trim();
-    if (k) out[k] = value;
+    const k = (key ?? "").trim();
+    if (k) out[k] = value ?? "";
   }
   return out;
 }
