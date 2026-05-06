@@ -5,7 +5,11 @@ export type Monitor = Database["public"]["Tables"]["monitors"]["Row"];
 export type MonitorInsert = Database["public"]["Tables"]["monitors"]["Insert"];
 export type Heartbeat = Database["public"]["Tables"]["heartbeats"]["Row"];
 export type Incident = Database["public"]["Tables"]["incidents"]["Row"];
-export type MonitorStatus = "up" | "down" | "pending";
+export type MonitorStatus = "up" | "down" | "pending" | "degraded";
+export type MatchMode = "contains" | "not_contains" | "regex";
+export type HttpMethod = "GET" | "POST" | "HEAD" | "PUT" | "PATCH" | "DELETE";
+export type HttpBodyType = "json" | "xml" | "text" | "form";
+export const httpMethods: HttpMethod[] = ["GET", "POST", "HEAD", "PUT", "PATCH", "DELETE"];
 
 export const intervalOptions = [1, 2, 5, 10, 15, 30, 60];
 
