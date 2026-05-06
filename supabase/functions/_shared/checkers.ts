@@ -1,6 +1,6 @@
 // Shared monitor checker logic used by run-checks and check-now.
 
-export type MonitorType = "http" | "tcp" | "ping" | "keyword";
+export type MonitorType = "http" | "tcp" | "ping";
 export type MatchMode = "contains" | "not_contains" | "regex";
 
 export interface Monitor {
