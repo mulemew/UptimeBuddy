@@ -17,8 +17,8 @@ import { Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 const headerRow = z.object({
-  key: z.string().trim().max(200),
-  value: z.string().max(2000),
+  key: z.string().max(200).default(""),
+  value: z.string().max(2000).default(""),
 });
 
 const schema = z.object({
