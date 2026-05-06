@@ -157,7 +157,6 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="http">HTTP / HTTPS</SelectItem>
-                <SelectItem value="keyword">关键字检查</SelectItem>
                 <SelectItem value="tcp">TCP 端口</SelectItem>
                 <SelectItem value="ping">Ping (基于 HTTP)</SelectItem>
               </SelectContent>
