@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       heartbeats: {
         Row: {
+          cert_days_remaining: number | null
           checked_at: string
           error_message: string | null
           id: string
@@ -25,6 +26,7 @@ export type Database = {
           status_code: number | null
         }
         Insert: {
+          cert_days_remaining?: number | null
           checked_at?: string
           error_message?: string | null
           id?: string
@@ -34,6 +36,7 @@ export type Database = {
           status_code?: number | null
         }
         Update: {
+          cert_days_remaining?: number | null
           checked_at?: string
           error_message?: string | null
           id?: string
@@ -89,10 +92,18 @@ export type Database = {
       }
       monitors: {
         Row: {
+          cert_expiry_warn_days: number
           created_at: string
+          degraded_threshold_ms: number | null
           enabled: boolean
           expected_status_codes: string
+          follow_redirects: boolean
+          http_body: string | null
+          http_body_type: string | null
+          http_headers: Json
+          http_method: string
           id: string
+          ignore_tls_errors: boolean
           interval_minutes: number
           keyword: string | null
           keyword_match:
@@ -100,6 +111,7 @@ export type Database = {
             | null
           last_checked_at: string | null
           last_status: Database["public"]["Enums"]["monitor_status"]
+          match_mode: string
           name: string
           target: string
           timeout_seconds: number
@@ -107,10 +119,18 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cert_expiry_warn_days?: number
           created_at?: string
+          degraded_threshold_ms?: number | null
           enabled?: boolean
           expected_status_codes?: string
+          follow_redirects?: boolean
+          http_body?: string | null
+          http_body_type?: string | null
+          http_headers?: Json
+          http_method?: string
           id?: string
+          ignore_tls_errors?: boolean
           interval_minutes?: number
           keyword?: string | null
           keyword_match?:
@@ -118,6 +138,7 @@ export type Database = {
             | null
           last_checked_at?: string | null
           last_status?: Database["public"]["Enums"]["monitor_status"]
+          match_mode?: string
           name: string
           target: string
           timeout_seconds?: number
@@ -125,10 +146,18 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cert_expiry_warn_days?: number
           created_at?: string
+          degraded_threshold_ms?: number | null
           enabled?: boolean
           expected_status_codes?: string
+          follow_redirects?: boolean
+          http_body?: string | null
+          http_body_type?: string | null
+          http_headers?: Json
+          http_method?: string
           id?: string
+          ignore_tls_errors?: boolean
           interval_minutes?: number
           keyword?: string | null
           keyword_match?:
@@ -136,6 +165,7 @@ export type Database = {
             | null
           last_checked_at?: string | null
           last_status?: Database["public"]["Enums"]["monitor_status"]
+          match_mode?: string
           name?: string
           target?: string
           timeout_seconds?: number
@@ -153,7 +183,7 @@ export type Database = {
     }
     Enums: {
       keyword_match_type: "contains" | "not_contains"
-      monitor_status: "up" | "down" | "pending"
+      monitor_status: "up" | "down" | "pending" | "degraded"
       monitor_type: "http" | "tcp" | "ping" | "keyword"
     }
     CompositeTypes: {
@@ -283,7 +313,7 @@ export const Constants = {
   public: {
     Enums: {
       keyword_match_type: ["contains", "not_contains"],
-      monitor_status: ["up", "down", "pending"],
+      monitor_status: ["up", "down", "pending", "degraded"],
       monitor_type: ["http", "tcp", "ping", "keyword"],
     },
   },

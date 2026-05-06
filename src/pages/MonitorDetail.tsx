@@ -163,6 +163,14 @@ export default function MonitorDetail() {
             <Card className="mb-6 p-5">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-semibold">最近 60 次心跳</h2>
+                {(() => {
+                  const last = latestBeats.find((b) => b.cert_days_remaining != null);
+                  return last ? (
+                    <span className="text-xs text-muted-foreground">
+                      SSL 证书剩余 <span className="font-medium text-foreground">{last.cert_days_remaining}</span> 天
+                    </span>
+                  ) : null;
+                })()}
               </div>
               <StatusBar beats={latestBeats} count={60} size="md" />
             </Card>

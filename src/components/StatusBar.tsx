@@ -32,6 +32,7 @@ export function StatusBar({ beats, size = "sm", count = 30 }: Props) {
             b.status === "up" && "bg-status-up",
             b.status === "down" && "bg-status-down",
             b.status === "pending" && "bg-status-pending",
+            b.status === "degraded" && "bg-status-degraded",
           )}
         />
       ))}

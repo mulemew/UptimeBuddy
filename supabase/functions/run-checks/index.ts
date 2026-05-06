@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
 
     const { data: monitors, error } = await sb
       .from("monitors")
-      .select("id,name,type,target,interval_minutes,timeout_seconds,keyword,keyword_match,expected_status_codes,last_checked_at,last_status")
+      .select("id,name,type,target,interval_minutes,timeout_seconds,keyword,keyword_match,expected_status_codes,last_checked_at,last_status,http_method,http_body,http_body_type,http_headers,follow_redirects,ignore_tls_errors,cert_expiry_warn_days,match_mode,degraded_threshold_ms")
       .eq("enabled", true);
 
     if (error) throw error;

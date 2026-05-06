@@ -5,6 +5,7 @@ const labels: Record<MonitorStatus, string> = {
   up: "正常",
   down: "宕机",
   pending: "等待中",
+  degraded: "降级",
 };
 
 export function StatusBadge({ status, className }: { status: MonitorStatus; className?: string }) {
@@ -15,6 +16,7 @@ export function StatusBadge({ status, className }: { status: MonitorStatus; clas
         status === "up" && "bg-status-up/15 text-status-up",
         status === "down" && "bg-status-down/15 text-status-down",
         status === "pending" && "bg-status-pending/15 text-status-pending",
+        status === "degraded" && "bg-status-degraded/15 text-status-degraded",
         className,
       )}
     >
@@ -24,6 +26,7 @@ export function StatusBadge({ status, className }: { status: MonitorStatus; clas
           status === "up" && "bg-status-up",
           status === "down" && "bg-status-down",
           status === "pending" && "bg-status-pending",
+          status === "degraded" && "bg-status-degraded",
         )}
       />
       {labels[status]}
