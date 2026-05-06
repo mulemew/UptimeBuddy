@@ -91,8 +91,8 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "http_headers" });
   const type = form.watch("type");
   const method = form.watch("http_method");
-  const isHttpish = type === "http" || type === "keyword";
-  const hasBody = isHttpish && method !== "GET" && method !== "HEAD";
+  const isHttp = type === "http";
+  const hasBody = isHttp && method !== "GET" && method !== "HEAD";
 
   const targetPlaceholder =
     type === "tcp" ? "example.com:5432"
@@ -109,13 +109,13 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
         interval_minutes: values.interval_minutes,
         timeout_seconds: values.timeout_seconds,
         expected_status_codes: values.expected_status_codes,
-        keyword: type === "keyword" ? values.keyword || null : null,
+        keyword: isHttp ? (values.keyword?.trim() || null) : null,
         match_mode: values.match_mode,
         keyword_match: values.match_mode === "regex" ? "contains" : values.match_mode,
-        http_method: isHttpish ? values.http_method : "GET",
+        http_method: isHttp ? values.http_method : "GET",
         http_body: hasBody ? (values.http_body || null) : null,
         http_body_type: hasBody ? values.http_body_type : null,
-        http_headers: isHttpish ? headersArrToObj(values.http_headers) : {},
+        http_headers: isHttp ? headersArrToObj(values.http_headers) : {},
         follow_redirects: values.follow_redirects,
         ignore_tls_errors: values.ignore_tls_errors,
         cert_expiry_warn_days: values.cert_expiry_warn_days,
