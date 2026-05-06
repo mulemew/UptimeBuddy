@@ -1,0 +1,59 @@
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Card } from "@/components/ui/card";
+import { StatusBar } from "@/components/StatusBar";
+import { StatusBadge } from "@/components/StatusBadge";
+import { recentHeartbeats, uptimePercent, avgResponse, type Monitor, typeLabels } from "@/lib/monitors";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
+
+export function MonitorCard({ monitor }: { monitor: Monitor }) {
+  const { data: beats = [] } = useQuery({
+    queryKey: ["heartbeats", monitor.id, "card"],
+    queryFn: () => recentHeartbeats(monitor.id, 30),
+    refetchInterval: 30_000,
+  });
+
+  const uptime = uptimePercent(beats);
+  const avg = avgResponse(beats);
+
+  return (
+    <Link to={`/monitors/${monitor.id}`}>
+      <Card className="p-5 transition-colors hover:bg-accent/40">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="truncate text-base font-semibold">{monitor.name}</h3>
+              <StatusBadge status={monitor.last_status} />
+              {!monitor.enabled && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">已暂停</span>
+              )}
+            </div>
+            <p className="mt-1 truncate text-sm text-muted-foreground">
+              {typeLabels[monitor.type]} · {monitor.target}
+            </p>
+          </div>
+          <div className="text-right text-sm">
+            <div className="font-semibold">{uptime}%</div>
+            <div className="text-xs text-muted-foreground">
+              {avg != null ? `${avg} ms` : "—"}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <StatusBar beats={beats} count={30} />
+        </div>
+
+        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+          <span>每 {monitor.interval_minutes} 分钟检查</span>
+          <span>
+            {monitor.last_checked_at
+              ? `${formatDistanceToNow(new Date(monitor.last_checked_at), { locale: zhCN, addSuffix: true })}`
+              : "尚未检查"}
+          </span>
+        </div>
+      </Card>
+    </Link>
+  );
+}
