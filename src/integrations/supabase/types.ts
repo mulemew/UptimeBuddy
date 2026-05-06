@@ -184,7 +184,7 @@ export type Database = {
     Enums: {
       keyword_match_type: "contains" | "not_contains"
       monitor_status: "up" | "down" | "pending" | "degraded"
-      monitor_type: "http" | "tcp" | "ping" | "keyword"
+      monitor_type: "http" | "tcp" | "ping"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -314,7 +314,7 @@ export const Constants = {
     Enums: {
       keyword_match_type: ["contains", "not_contains"],
       monitor_status: ["up", "down", "pending", "degraded"],
-      monitor_type: ["http", "tcp", "ping", "keyword"],
+      monitor_type: ["http", "tcp", "ping"],
     },
   },
 } as const

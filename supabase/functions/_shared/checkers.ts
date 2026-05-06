@@ -1,6 +1,6 @@
 // Shared monitor checker logic used by run-checks and check-now.
 
-export type MonitorType = "http" | "tcp" | "ping" | "keyword";
+export type MonitorType = "http" | "tcp" | "ping";
 export type MatchMode = "contains" | "not_contains" | "regex";
 
 export interface Monitor {
@@ -266,8 +266,7 @@ async function checkPing(m: Monitor): Promise<CheckResult> {
 
 export async function runCheck(m: Monitor): Promise<CheckResult> {
   switch (m.type) {
-    case "http": return await checkHttp(m, { forceReadBody: false });
-    case "keyword": return await checkHttp(m, { forceReadBody: true });
+    case "http": return await checkHttp(m);
     case "tcp": return await checkTcp(m);
     case "ping": return await checkPing(m);
   }

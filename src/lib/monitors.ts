@@ -15,7 +15,6 @@ export const intervalOptions = [1, 2, 5, 10, 15, 30, 60];
 
 export const typeLabels: Record<Monitor["type"], string> = {
   http: "HTTP / HTTPS",
-  keyword: "关键字",
   tcp: "TCP 端口",
   ping: "Ping (HTTP)",
 };

@@ -23,7 +23,7 @@ const headerRow = z.object({
 
 const schema = z.object({
   name: z.string().min(1, "请输入名称").max(100),
-  type: z.enum(["http", "keyword", "tcp", "ping"]),
+  type: z.enum(["http", "tcp", "ping"]),
   target: z.string().min(1, "请输入目标"),
   interval_minutes: z.coerce.number().int().min(1).max(1440),
   timeout_seconds: z.coerce.number().int().min(1).max(60),
@@ -91,8 +91,8 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "http_headers" });
   const type = form.watch("type");
   const method = form.watch("http_method");
-  const isHttpish = type === "http" || type === "keyword";
-  const hasBody = isHttpish && method !== "GET" && method !== "HEAD";
+  const isHttp = type === "http";
+  const hasBody = isHttp && method !== "GET" && method !== "HEAD";
 
   const targetPlaceholder =
     type === "tcp" ? "example.com:5432"
@@ -109,13 +109,13 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
         interval_minutes: values.interval_minutes,
         timeout_seconds: values.timeout_seconds,
         expected_status_codes: values.expected_status_codes,
-        keyword: type === "keyword" ? values.keyword || null : null,
+        keyword: isHttp ? (values.keyword?.trim() || null) : null,
         match_mode: values.match_mode,
         keyword_match: values.match_mode === "regex" ? "contains" : values.match_mode,
-        http_method: isHttpish ? values.http_method : "GET",
+        http_method: isHttp ? values.http_method : "GET",
         http_body: hasBody ? (values.http_body || null) : null,
         http_body_type: hasBody ? values.http_body_type : null,
-        http_headers: isHttpish ? headersArrToObj(values.http_headers) : {},
+        http_headers: isHttp ? headersArrToObj(values.http_headers) : {},
         follow_redirects: values.follow_redirects,
         ignore_tls_errors: values.ignore_tls_errors,
         cert_expiry_warn_days: values.cert_expiry_warn_days,
@@ -157,7 +157,6 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="http">HTTP / HTTPS</SelectItem>
-                <SelectItem value="keyword">关键字检查</SelectItem>
                 <SelectItem value="tcp">TCP 端口</SelectItem>
                 <SelectItem value="ping">Ping (基于 HTTP)</SelectItem>
               </SelectContent>
@@ -193,7 +192,7 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
             <Label htmlFor="timeout">超时（秒）</Label>
             <Input id="timeout" type="number" min={1} max={60} {...form.register("timeout_seconds")} />
           </div>
-          {isHttpish && (
+          {isHttp && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="codes">期望状态码</Label>
@@ -207,33 +206,7 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
           )}
         </div>
 
-        {type === "keyword" && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_200px]">
-            <div className="space-y-2">
-              <Label htmlFor="keyword">关键字 / 正则</Label>
-              <Input id="keyword" {...form.register("keyword")} placeholder="例如：欢迎 或 ^OK$" />
-              {form.formState.errors.keyword && (
-                <p className="text-sm text-destructive">{form.formState.errors.keyword.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>匹配方式</Label>
-              <Select
-                value={form.watch("match_mode")}
-                onValueChange={(v) => form.setValue("match_mode", v as FormValues["match_mode"])}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="contains">应包含</SelectItem>
-                  <SelectItem value="not_contains">不应包含</SelectItem>
-                  <SelectItem value="regex">正则匹配</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-
-        {isHttpish && (
+        {isHttp && (
           <Accordion type="single" collapsible>
             <AccordionItem value="adv">
               <AccordionTrigger>高级 HTTP 设置</AccordionTrigger>
@@ -309,6 +282,33 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
                     </div>
                   </div>
                 )}
+
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label className="text-sm">关键字判定（可选）</Label>
+                  <p className="text-xs text-muted-foreground">填写后会读取响应正文进行匹配；留空则跳过</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
+                    <div className="space-y-1">
+                      <Input
+                        {...form.register("keyword")}
+                        placeholder="例如：欢迎 或 ^OK$"
+                      />
+                      {form.formState.errors.keyword && (
+                        <p className="text-sm text-destructive">{form.formState.errors.keyword.message}</p>
+                      )}
+                    </div>
+                    <Select
+                      value={form.watch("match_mode")}
+                      onValueChange={(v) => form.setValue("match_mode", v as FormValues["match_mode"])}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="contains">应包含</SelectItem>
+                        <SelectItem value="not_contains">不应包含</SelectItem>
+                        <SelectItem value="regex">正则匹配</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex items-center justify-between rounded-md border p-3">
