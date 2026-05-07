@@ -4,11 +4,13 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
 export default function Settings() {
-  const { username, changeCredentials } = useAuth();
+  const { username, publicStatusPage, changeCredentials, updateSettings } = useAuth();
+  const [savingPublic, setSavingPublic] = useState(false);
   const [newUsername, setNewUsername] = useState(username ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
