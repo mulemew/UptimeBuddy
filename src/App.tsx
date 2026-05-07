@@ -26,9 +26,19 @@ function Gate() {
       <Route path="/monitors/new" element={<MonitorNew />} />
       <Route path="/monitors/:id" element={<MonitorDetail />} />
       <Route path="/settings" element={<Settings />} />
+      <Route path="/status" element={<StatusPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
+}
+
+function StatusGate() {
+  const { loading, authenticated, publicStatusPage } = useAuth();
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">加载中…</div>;
+  }
+  if (!publicStatusPage && !authenticated) return <AuthScreen />;
+  return <StatusPage />;
 }
 
 const App = () => (
@@ -39,8 +49,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            {/* Status page is public */}
-            <Route path="/status" element={<StatusPage />} />
+            <Route path="/status" element={<StatusGate />} />
             <Route path="*" element={<Gate />} />
           </Routes>
         </AuthProvider>
