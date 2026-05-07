@@ -8,6 +8,7 @@ type AuthState = {
   initialized: boolean;
   authenticated: boolean;
   username: string | null;
+  publicStatusPage: boolean;
 };
 
 type AuthContextValue = AuthState & {
@@ -16,6 +17,7 @@ type AuthContextValue = AuthState & {
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   changeCredentials: (input: { current_password: string; new_username?: string; new_password?: string }) => Promise<void>;
+  updateSettings: (input: { public_status_page: boolean }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initialized: false,
     authenticated: false,
     username: null,
+    publicStatusPage: true,
   });
 
   const refresh = useCallback(async () => {
@@ -62,9 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         initialized: !!data.initialized,
         authenticated: !!data.authenticated,
         username: data.username ?? null,
+        publicStatusPage: data.public_status_page ?? true,
       });
     } catch {
-      setState({ loading: false, initialized: false, authenticated: false, username: null });
+      setState({ loading: false, initialized: false, authenticated: false, username: null, publicStatusPage: true });
     }
   }, []);
 
@@ -91,14 +95,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const changeCredentials: AuthContextValue["changeCredentials"] = async (input) => {
     await call("change-credentials", input);
     if (input.new_password) {
-      // session may be invalidated; force re-login
       localStorage.removeItem(TOKEN_KEY);
     }
     await refresh();
   };
 
+  const updateSettings: AuthContextValue["updateSettings"] = async (input) => {
+    await call("update-settings", input);
+    await refresh();
+  };
+
   return (
-    <AuthContext.Provider value={{ ...state, refresh, setup, login, logout, changeCredentials }}>
+    <AuthContext.Provider value={{ ...state, refresh, setup, login, logout, changeCredentials, updateSettings }}>
       {children}
     </AuthContext.Provider>
   );

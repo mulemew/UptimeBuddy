@@ -1,0 +1,1 @@
+ALTER TABLE public.admin_account ADD COLUMN IF NOT EXISTS public_status_page boolean NOT NULL DEFAULT true;
