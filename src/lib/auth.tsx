@@ -8,6 +8,7 @@ type AuthState = {
   initialized: boolean;
   authenticated: boolean;
   username: string | null;
+  publicStatusPage: boolean;
 };
 
 type AuthContextValue = AuthState & {
@@ -16,6 +17,7 @@ type AuthContextValue = AuthState & {
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   changeCredentials: (input: { current_password: string; new_username?: string; new_password?: string }) => Promise<void>;
+  updateSettings: (input: { public_status_page: boolean }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
