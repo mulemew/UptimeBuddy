@@ -20,6 +20,7 @@ export type Database = {
           id: string
           password_hash: string
           password_salt: string
+          public_status_page: boolean
           updated_at: string
           username: string
         }
@@ -28,6 +29,7 @@ export type Database = {
           id?: string
           password_hash: string
           password_salt: string
+          public_status_page?: boolean
           updated_at?: string
           username: string
         }
@@ -36,6 +38,7 @@ export type Database = {
           id?: string
           password_hash?: string
           password_salt?: string
+          public_status_page?: boolean
           updated_at?: string
           username?: string
         }
