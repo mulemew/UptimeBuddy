@@ -70,7 +70,26 @@ Deno.serve(async (req) => {
     if (action === "status") {
       const admin = await getAdmin();
       const authed = await verifyToken(token);
-      return json({ initialized: !!admin, authenticated: authed, username: admin?.username ?? null });
+      return json({
+        initialized: !!admin,
+        authenticated: authed,
+        username: admin?.username ?? null,
+        public_status_page: admin?.public_status_page ?? true,
+      });
+    }
+
+    if (action === "update-settings") {
+      if (!await verifyToken(token)) return json({ error: "未授权" }, 401);
+      const admin = await getAdmin();
+      if (!admin) return json({ error: "尚未初始化" }, 400);
+      const { public_status_page } = body;
+      if (typeof public_status_page !== "boolean") return json({ error: "参数错误" }, 400);
+      const { error } = await supabase
+        .from("admin_account")
+        .update({ public_status_page })
+        .eq("id", admin.id);
+      if (error) return json({ error: error.message }, 500);
+      return json({ ok: true, public_status_page });
     }
 
     if (action === "setup") {
