@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_account: {
+        Row: {
+          created_at: string
+          id: string
+          password_hash: string
+          password_salt: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password_hash: string
+          password_salt: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+          password_salt?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      admin_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          token?: string
+        }
+        Relationships: []
+      }
       heartbeats: {
         Row: {
           cert_days_remaining: number | null

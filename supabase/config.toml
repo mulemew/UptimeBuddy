@@ -1,1 +1,10 @@
 project_id = "imwcpwuykdrzkjpclswz"
+
+[functions.run-checks]
+verify_jwt = false
+
+[functions.check-now]
+verify_jwt = false
+
+[functions.auth]
+verify_jwt = false
