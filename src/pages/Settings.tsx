@@ -74,6 +74,34 @@ export default function Settings() {
             </form>
           </CardContent>
         </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>状态页访问</CardTitle>
+            <CardDescription>关闭后，公开状态页 /status 也需要登录后才能查看。</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="public-status" className="cursor-pointer">允许免登录访问状态页</Label>
+              <Switch
+                id="public-status"
+                checked={publicStatusPage}
+                disabled={savingPublic}
+                onCheckedChange={async (v) => {
+                  setSavingPublic(true);
+                  try {
+                    await updateSettings({ public_status_page: v });
+                    toast.success("已更新");
+                  } catch (err) {
+                    toast.error((err as Error).message || "更新失败");
+                  } finally {
+                    setSavingPublic(false);
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
