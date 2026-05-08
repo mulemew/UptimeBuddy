@@ -234,7 +234,7 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
               <AccordionContent className="space-y-5 pt-2">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>请求方法</Label>
+                    <Label>{t("monitorForm.method")}</Label>
                     <Select
                       value={method}
                       onValueChange={(v) => form.setValue("http_method", v as FormValues["http_method"])}
@@ -247,8 +247,8 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
                   </div>
                   <div className="flex items-center justify-between rounded-md border p-3">
                     <div>
-                      <Label className="text-sm">跟随重定向</Label>
-                      <p className="text-xs text-muted-foreground">关闭后 3xx 视为正常</p>
+                      <Label className="text-sm">{t("monitorForm.followRedirects")}</Label>
+                      <p className="text-xs text-muted-foreground">{t("monitorForm.followRedirectsDesc")}</p>
                     </div>
                     <Switch
                       checked={form.watch("follow_redirects")}
@@ -259,19 +259,19 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>请求头 (Headers)</Label>
+                    <Label>{t("monitorForm.headers")}</Label>
                     <Button type="button" variant="outline" size="sm" onClick={() => append({ key: "", value: "" })}>
-                      <Plus className="mr-1 h-3.5 w-3.5" />添加
+                      <Plus className="mr-1 h-3.5 w-3.5" />{t("monitorForm.addHeader")}
                     </Button>
                   </div>
                   {fields.length === 0 && (
-                    <p className="text-xs text-muted-foreground">暂无自定义请求头</p>
+                    <p className="text-xs text-muted-foreground">{t("monitorForm.noHeaders")}</p>
                   )}
                   <div className="space-y-2">
                     {fields.map((f, idx) => (
                       <div key={f.id} className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                        <Input placeholder="Header 名称" {...form.register(`http_headers.${idx}.key` as const)} />
-                        <Input placeholder="值" {...form.register(`http_headers.${idx}.value` as const)} />
+                        <Input placeholder={t("monitorForm.headerName")} {...form.register(`http_headers.${idx}.key` as const)} />
+                        <Input placeholder={t("monitorForm.headerValue")} {...form.register(`http_headers.${idx}.value` as const)} />
                         <Button type="button" variant="ghost" size="icon" onClick={() => remove(idx)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -283,7 +283,7 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
                 {hasBody && (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-[180px_1fr]">
                     <div className="space-y-2">
-                      <Label>Body 类型</Label>
+                      <Label>{t("monitorForm.bodyType")}</Label>
                       <Select
                         value={form.watch("http_body_type")}
                         onValueChange={(v) => form.setValue("http_body_type", v as FormValues["http_body_type"])}
@@ -298,20 +298,20 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="body">Body</Label>
+                      <Label htmlFor="body">{t("monitorForm.body")}</Label>
                       <Textarea id="body" rows={6} {...form.register("http_body")} placeholder='{"key":"value"}' />
                     </div>
                   </div>
                 )}
 
                 <div className="space-y-2 rounded-md border p-3">
-                  <Label className="text-sm">关键字判定（可选）</Label>
-                  <p className="text-xs text-muted-foreground">填写后会读取响应正文进行匹配；留空则跳过</p>
+                  <Label className="text-sm">{t("monitorForm.keywordTitle")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("monitorForm.keywordDesc")}</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
                     <div className="space-y-1">
                       <Input
                         {...form.register("keyword")}
-                        placeholder="例如：欢迎 或 ^OK$"
+                        placeholder={t("monitorForm.keywordPlaceholder")}
                       />
                       {form.formState.errors.keyword && (
                         <p className="text-sm text-destructive">{form.formState.errors.keyword.message}</p>
@@ -323,9 +323,9 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="contains">应包含</SelectItem>
-                        <SelectItem value="not_contains">不应包含</SelectItem>
-                        <SelectItem value="regex">正则匹配</SelectItem>
+                        <SelectItem value="contains">{t("monitorForm.matchContains")}</SelectItem>
+                        <SelectItem value="not_contains">{t("monitorForm.matchNotContains")}</SelectItem>
+                        <SelectItem value="regex">{t("monitorForm.matchRegex")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -334,8 +334,8 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex items-center justify-between rounded-md border p-3">
                     <div>
-                      <Label className="text-sm">忽略 TLS 证书错误</Label>
-                      <p className="text-xs text-muted-foreground">运行时受限：会标记为降级</p>
+                      <Label className="text-sm">{t("monitorForm.ignoreTls")}</Label>
+                      <p className="text-xs text-muted-foreground">{t("monitorForm.ignoreTlsDesc")}</p>
                     </div>
                     <Switch
                       checked={form.watch("ignore_tls_errors")}
@@ -343,7 +343,7 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="cert">证书过期预警（天，0=关闭）</Label>
+                    <Label htmlFor="cert">{t("monitorForm.certWarn")}</Label>
                     <Input id="cert" type="number" min={0} max={365} {...form.register("cert_expiry_warn_days")} />
                   </div>
                 </div>
@@ -353,8 +353,8 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={() => navigate(-1)}>取消</Button>
-          <Button type="submit" disabled={submitting}>{initial ? "保存" : "创建监控"}</Button>
+          <Button type="button" variant="ghost" onClick={() => navigate(-1)}>{t("common.cancel")}</Button>
+          <Button type="submit" disabled={submitting}>{initial ? t("common.save") : t("monitorForm.create")}</Button>
         </div>
       </form>
     </Card>
