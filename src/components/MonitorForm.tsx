@@ -164,7 +164,7 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
     <Card className="p-6">
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="name">名称</Label>
+          <Label htmlFor="name">{t("monitorForm.nameLabel")}</Label>
           <Input id="name" {...form.register("name")} placeholder="My Website" />
           {form.formState.errors.name && (
             <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
@@ -173,19 +173,19 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>类型</Label>
+            <Label>{t("monitorForm.type")}</Label>
             <Select value={type} onValueChange={(v) => form.setValue("type", v as FormValues["type"])}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="http">HTTP / HTTPS</SelectItem>
-                <SelectItem value="tcp">TCP 端口</SelectItem>
-                <SelectItem value="ping">Ping (基于 HTTP)</SelectItem>
+                <SelectItem value="http">{t("monitorTypes.http")}</SelectItem>
+                <SelectItem value="tcp">{t("monitorTypes.tcp")}</SelectItem>
+                <SelectItem value="ping">{t("monitorTypes.ping")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label>检查间隔（分钟）</Label>
+            <Label>{t("monitorForm.intervalLabel")}</Label>
             <Select
               value={String(form.watch("interval_minutes"))}
               onValueChange={(v) => form.setValue("interval_minutes", Number(v))}
@@ -193,7 +193,7 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {intervalOptions.map((n) => (
-                  <SelectItem key={n} value={String(n)}>{n} 分钟</SelectItem>
+                  <SelectItem key={n} value={String(n)}>{n} {t("common.minutes")}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -201,7 +201,7 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="target">目标</Label>
+          <Label htmlFor="target">{t("monitorForm.target")}</Label>
           <Input id="target" {...form.register("target")} placeholder={targetPlaceholder} />
           {form.formState.errors.target && (
             <p className="text-sm text-destructive">{form.formState.errors.target.message}</p>
@@ -210,17 +210,17 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="space-y-2">
-            <Label htmlFor="timeout">超时（秒）</Label>
+            <Label htmlFor="timeout">{t("monitorForm.timeout")}</Label>
             <Input id="timeout" type="number" min={1} max={60} {...form.register("timeout_seconds")} />
           </div>
           {isHttp && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="codes">期望状态码</Label>
+                <Label htmlFor="codes">{t("monitorForm.expectedCodes")}</Label>
                 <Input id="codes" {...form.register("expected_status_codes")} placeholder="200-299,300-399" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="degraded">降级阈值（ms，0=关闭）</Label>
+                <Label htmlFor="degraded">{t("monitorForm.degradedThreshold")}</Label>
                 <Input id="degraded" type="number" min={0} {...form.register("degraded_threshold_ms")} />
               </div>
             </>
@@ -230,7 +230,7 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
         {isHttp && (
           <Accordion type="single" collapsible>
             <AccordionItem value="adv">
-              <AccordionTrigger>高级 HTTP 设置</AccordionTrigger>
+              <AccordionTrigger>{t("monitorForm.advHttp")}</AccordionTrigger>
               <AccordionContent className="space-y-5 pt-2">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
