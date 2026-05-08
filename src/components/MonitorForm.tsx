@@ -145,16 +145,16 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
       if (initial) {
         const { error } = await supabase.from("monitors").update(payload as never).eq("id", initial.id);
         if (error) throw error;
-        toast.success("已保存");
+        toast.success(t("monitorForm.savedOk"));
       } else {
         const { error } = await supabase.from("monitors").insert(payload as never);
         if (error) throw error;
-        toast.success("监控已创建");
+        toast.success(t("monitorForm.createdOk"));
         navigate("/");
       }
       onSaved?.();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "保存失败");
+      toast.error(e instanceof Error ? e.message : t("monitorForm.saveFailed"));
     } finally {
       setSubmitting(false);
     }
