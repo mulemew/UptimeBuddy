@@ -83,7 +83,9 @@ function headersArrToObj(arr: { key?: string; value?: string }[]): Record<string
 
 export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?: () => void }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
+  const schema = useMemo(() => buildSchema(t), [t]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
