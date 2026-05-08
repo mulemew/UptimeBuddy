@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { listMonitors, recentHeartbeats, uptimePercent, type Monitor } from "@/lib/monitors";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -6,6 +7,7 @@ import { StatusBar } from "@/components/StatusBar";
 import { Card } from "@/components/ui/card";
 
 function StatusRow({ monitor }: { monitor: Monitor }) {
+  const { t } = useTranslation();
   const { data: beats = [] } = useQuery({
     queryKey: ["heartbeats", monitor.id, "status"],
     queryFn: () => recentHeartbeats(monitor.id, 30),
@@ -18,7 +20,7 @@ function StatusRow({ monitor }: { monitor: Monitor }) {
           <h3 className="truncate font-medium">{monitor.name}</h3>
           <StatusBadge status={monitor.last_status} />
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">{uptimePercent(beats)}% 在线</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("status.onlinePercent", { n: uptimePercent(beats) })}</p>
       </div>
       <StatusBar beats={beats} count={30} />
     </div>
@@ -26,6 +28,7 @@ function StatusRow({ monitor }: { monitor: Monitor }) {
 }
 
 export default function StatusPage() {
+  const { t } = useTranslation();
   const { data: monitors = [] } = useQuery({
     queryKey: ["monitors"],
     queryFn: listMonitors,
@@ -42,17 +45,17 @@ export default function StatusPage() {
       <main className="container max-w-3xl py-10">
         <Card className={`p-6 text-center ${anyDown ? "bg-status-down/10" : allUp ? "bg-status-up/10" : ""}`}>
           <h1 className="text-2xl font-bold">
-            {anyDown ? "部分服务异常" : allUp ? "所有服务运行正常" : "状态未知"}
+            {anyDown ? t("status.partialDown") : allUp ? t("status.allUp") : t("status.statusUnknown")}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            最后更新：{new Date().toLocaleString()}
+            {t("status.lastUpdate", { time: new Date().toLocaleString() })}
           </p>
         </Card>
 
         <Card className="mt-6 p-6">
-          <h2 className="mb-2 text-sm font-semibold">服务状态</h2>
+          <h2 className="mb-2 text-sm font-semibold">{t("status.services")}</h2>
           {enabled.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">尚未配置任何监控。</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("status.noMonitors")}</p>
           ) : (
             <div>
               {enabled.map((m) => <StatusRow key={m.id} monitor={m} />)}

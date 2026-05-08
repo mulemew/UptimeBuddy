@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthScreen } from "@/pages/Auth";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -16,8 +18,9 @@ const queryClient = new QueryClient();
 
 function Gate() {
   const { loading, authenticated } = useAuth();
+  const { t } = useTranslation();
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">加载中…</div>;
+    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">{t("common.loading")}</div>;
   }
   if (!authenticated) return <AuthScreen />;
   return (
@@ -34,8 +37,9 @@ function Gate() {
 
 function StatusGate() {
   const { loading, authenticated, publicStatusPage } = useAuth();
+  const { t } = useTranslation();
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">加载中…</div>;
+    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">{t("common.loading")}</div>;
   }
   if (!publicStatusPage && !authenticated) return <AuthScreen />;
   return <StatusPage />;
@@ -43,18 +47,20 @@ function StatusGate() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/status" element={<StatusGate />} />
-            <Route path="*" element={<Gate />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/status" element={<StatusGate />} />
+              <Route path="*" element={<Gate />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

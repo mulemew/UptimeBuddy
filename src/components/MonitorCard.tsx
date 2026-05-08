@@ -1,13 +1,15 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { StatusBar } from "@/components/StatusBar";
 import { StatusBadge } from "@/components/StatusBadge";
-import { recentHeartbeats, uptimePercent, avgResponse, type Monitor, typeLabels } from "@/lib/monitors";
+import { recentHeartbeats, uptimePercent, avgResponse, type Monitor } from "@/lib/monitors";
 import { formatDistanceToNow } from "date-fns";
-import { zhCN } from "date-fns/locale";
+import { dfLocale } from "@/lib/dateLocale";
 
 export function MonitorCard({ monitor }: { monitor: Monitor }) {
+  const { t } = useTranslation();
   const { data: beats = [] } = useQuery({
     queryKey: ["heartbeats", monitor.id, "card"],
     queryFn: () => recentHeartbeats(monitor.id, 30),
@@ -26,11 +28,11 @@ export function MonitorCard({ monitor }: { monitor: Monitor }) {
               <h3 className="truncate text-base font-semibold">{monitor.name}</h3>
               <StatusBadge status={monitor.last_status} />
               {!monitor.enabled && (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">已暂停</span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{t("common.paused")}</span>
               )}
             </div>
             <p className="mt-1 truncate text-sm text-muted-foreground">
-              {typeLabels[monitor.type]} · {monitor.target}
+              {t(`monitorTypes.${monitor.type}`)} · {monitor.target}
             </p>
           </div>
           <div className="text-right text-sm">
@@ -46,11 +48,11 @@ export function MonitorCard({ monitor }: { monitor: Monitor }) {
         </div>
 
         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-          <span>每 {monitor.interval_minutes} 分钟检查</span>
+          <span>{t("monitorCard.intervalLabel", { n: monitor.interval_minutes })}</span>
           <span>
             {monitor.last_checked_at
-              ? `${formatDistanceToNow(new Date(monitor.last_checked_at), { locale: zhCN, addSuffix: true })}`
-              : "尚未检查"}
+              ? formatDistanceToNow(new Date(monitor.last_checked_at), { locale: dfLocale(), addSuffix: true })
+              : t("monitorCard.neverChecked")}
           </span>
         </div>
       </Card>

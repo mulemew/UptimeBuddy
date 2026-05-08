@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 
 export default function Settings() {
   const { username, publicStatusPage, changeCredentials, updateSettings } = useAuth();
+  const { t } = useTranslation();
   const [savingPublic, setSavingPublic] = useState(false);
   const [newUsername, setNewUsername] = useState(username ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -19,10 +21,10 @@ export default function Settings() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentPassword) return toast.error("请输入当前密码");
-    if (newPassword && newPassword !== confirm) return toast.error("两次新密码不一致");
-    if (newPassword && newPassword.length < 8) return toast.error("新密码至少 8 位");
-    if (newUsername.trim().length < 3) return toast.error("用户名至少 3 位");
+    if (!currentPassword) return toast.error(t("settings.currentPasswordRequired"));
+    if (newPassword && newPassword !== confirm) return toast.error(t("settings.newPasswordMismatch"));
+    if (newPassword && newPassword.length < 8) return toast.error(t("settings.newPasswordTooShort"));
+    if (newUsername.trim().length < 3) return toast.error(t("settings.usernameTooShort"));
 
     setLoading(true);
     try {
@@ -31,10 +33,10 @@ export default function Settings() {
         new_username: newUsername.trim() !== username ? newUsername.trim() : undefined,
         new_password: newPassword || undefined,
       });
-      toast.success(newPassword ? "已更新，请重新登录" : "已更新");
+      toast.success(newPassword ? t("settings.savedRelogin") : t("settings.saved"));
       setCurrentPassword(""); setNewPassword(""); setConfirm("");
     } catch (err) {
-      toast.error((err as Error).message || "更新失败");
+      toast.error((err as Error).message || t("settings.updateFailed"));
     } finally {
       setLoading(false);
     }
@@ -44,45 +46,45 @@ export default function Settings() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="container max-w-xl py-8">
-        <h1 className="mb-6 text-2xl font-bold">账号设置</h1>
+        <h1 className="mb-6 text-2xl font-bold">{t("settings.title")}</h1>
         <Card>
           <CardHeader>
-            <CardTitle>修改用户名 / 密码</CardTitle>
-            <CardDescription>修改密码后将退出当前登录，需要重新登录。</CardDescription>
+            <CardTitle>{t("settings.credCardTitle")}</CardTitle>
+            <CardDescription>{t("settings.credCardDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label>用户名</Label>
+                <Label>{t("auth.username")}</Label>
                 <Input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>当前密码</Label>
+                <Label>{t("settings.currentPassword")}</Label>
                 <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" required />
               </div>
               <div className="space-y-2">
-                <Label>新密码（留空则不修改）</Label>
+                <Label>{t("settings.newPasswordOptional")}</Label>
                 <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
               </div>
               {newPassword && (
                 <div className="space-y-2">
-                  <Label>确认新密码</Label>
+                  <Label>{t("settings.confirmNewPassword")}</Label>
                   <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
                 </div>
               )}
-              <Button type="submit" disabled={loading}>{loading ? "保存中…" : "保存"}</Button>
+              <Button type="submit" disabled={loading}>{loading ? t("settings.saving") : t("common.save")}</Button>
             </form>
           </CardContent>
         </Card>
 
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>状态页访问</CardTitle>
-            <CardDescription>关闭后，公开状态页 /status 也需要登录后才能查看。</CardDescription>
+            <CardTitle>{t("settings.statusTitle")}</CardTitle>
+            <CardDescription>{t("settings.statusDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <Label htmlFor="public-status" className="cursor-pointer">允许免登录访问状态页</Label>
+              <Label htmlFor="public-status" className="cursor-pointer">{t("settings.allowPublic")}</Label>
               <Switch
                 id="public-status"
                 checked={publicStatusPage}
@@ -91,9 +93,9 @@ export default function Settings() {
                   setSavingPublic(true);
                   try {
                     await updateSettings({ public_status_page: v });
-                    toast.success("已更新");
+                    toast.success(t("settings.saved"));
                   } catch (err) {
-                    toast.error((err as Error).message || "更新失败");
+                    toast.error((err as Error).message || t("settings.updateFailed"));
                   } finally {
                     setSavingPublic(false);
                   }
