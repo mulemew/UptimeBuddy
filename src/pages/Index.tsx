@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { listMonitors } from "@/lib/monitors";
 import { AppHeader } from "@/components/AppHeader";
@@ -10,6 +11,7 @@ import { Plus, Activity } from "lucide-react";
 
 const Index = () => {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const { data: monitors = [], isLoading } = useQuery({
     queryKey: ["monitors"],
     queryFn: listMonitors,
@@ -39,25 +41,25 @@ const Index = () => {
       <main className="container py-8">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">监控仪表盘</h1>
+            <h1 className="text-2xl font-bold">{t("dashboard.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {monitors.length} 个监控 · {upCount} 正常 · {downCount} 宕机
+              {t("dashboard.summary", { total: monitors.length, up: upCount, down: downCount })}
             </p>
           </div>
           <Link to="/monitors/new">
-            <Button><Plus className="mr-1 h-4 w-4" />添加监控</Button>
+            <Button><Plus className="mr-1 h-4 w-4" />{t("dashboard.addMonitor")}</Button>
           </Link>
         </div>
 
         {isLoading ? (
-          <p className="text-muted-foreground">加载中…</p>
+          <p className="text-muted-foreground">{t("common.loading")}</p>
         ) : monitors.length === 0 ? (
           <div className="rounded-lg border border-dashed p-12 text-center">
             <Activity className="mx-auto h-10 w-10 text-muted-foreground" />
-            <h2 className="mt-4 text-lg font-semibold">尚无监控</h2>
-            <p className="mt-1 text-sm text-muted-foreground">添加第一个监控以开始追踪服务可用性。</p>
+            <h2 className="mt-4 text-lg font-semibold">{t("dashboard.empty")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.emptyDesc")}</p>
             <Link to="/monitors/new">
-              <Button className="mt-4"><Plus className="mr-1 h-4 w-4" />添加监控</Button>
+              <Button className="mt-4"><Plus className="mr-1 h-4 w-4" />{t("dashboard.addMonitor")}</Button>
             </Link>
           </div>
         ) : (

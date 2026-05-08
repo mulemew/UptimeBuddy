@@ -1,14 +1,9 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { MonitorStatus } from "@/lib/monitors";
 
-const labels: Record<MonitorStatus, string> = {
-  up: "正常",
-  down: "宕机",
-  pending: "等待中",
-  degraded: "降级",
-};
-
 export function StatusBadge({ status, className }: { status: MonitorStatus; className?: string }) {
+  const { t } = useTranslation();
   return (
     <span
       className={cn(
@@ -29,7 +24,7 @@ export function StatusBadge({ status, className }: { status: MonitorStatus; clas
           status === "degraded" && "bg-status-degraded",
         )}
       />
-      {labels[status]}
+      {t(`statusBadge.${status}`)}
     </span>
   );
 }
