@@ -17,37 +17,55 @@ import { intervalOptions, httpMethods, type Monitor } from "@/lib/monitors";
 import { Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
-const headerRow = z.object({
-  key: z.string().max(200).default(""),
-  value: z.string().max(2000).default(""),
-});
-
-const schema = z.object({
-  name: z.string().min(1, "请输入名称").max(100),
-  type: z.enum(["http", "tcp", "ping"]),
-  target: z.string().min(1, "请输入目标"),
-  interval_minutes: z.coerce.number().int().min(1).max(1440),
-  timeout_seconds: z.coerce.number().int().min(1).max(60),
-  expected_status_codes: z.string().min(1),
-  keyword: z.string().max(500).optional(),
-  match_mode: z.enum(["contains", "not_contains", "regex"]),
-  http_method: z.enum(["GET", "POST", "HEAD", "PUT", "PATCH", "DELETE"]),
-  http_body: z.string().max(32_000).optional(),
-  http_body_type: z.enum(["json", "xml", "text", "form"]),
-  http_headers: z.array(headerRow).max(30),
-  follow_redirects: z.boolean(),
-  ignore_tls_errors: z.boolean(),
-  cert_expiry_warn_days: z.coerce.number().int().min(0).max(365),
-  degraded_threshold_ms: z.coerce.number().int().min(0).max(120_000),
-}).superRefine((v, ctx) => {
-  if (v.match_mode === "regex" && v.keyword) {
-    try { new RegExp(v.keyword); } catch (e) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["keyword"], message: `正则无效: ${(e as Error).message}` });
+function buildSchema(t: (k: string, opts?: Record<string, unknown>) => string) {
+  const headerRow = z.object({
+    key: z.string().max(200).default(""),
+    value: z.string().max(2000).default(""),
+  });
+  return z.object({
+    name: z.string().min(1, t("monitorForm.nameRequired")).max(100),
+    type: z.enum(["http", "tcp", "ping"]),
+    target: z.string().min(1, t("monitorForm.targetRequired")),
+    interval_minutes: z.coerce.number().int().min(1).max(1440),
+    timeout_seconds: z.coerce.number().int().min(1).max(60),
+    expected_status_codes: z.string().min(1),
+    keyword: z.string().max(500).optional(),
+    match_mode: z.enum(["contains", "not_contains", "regex"]),
+    http_method: z.enum(["GET", "POST", "HEAD", "PUT", "PATCH", "DELETE"]),
+    http_body: z.string().max(32_000).optional(),
+    http_body_type: z.enum(["json", "xml", "text", "form"]),
+    http_headers: z.array(headerRow).max(30),
+    follow_redirects: z.boolean(),
+    ignore_tls_errors: z.boolean(),
+    cert_expiry_warn_days: z.coerce.number().int().min(0).max(365),
+    degraded_threshold_ms: z.coerce.number().int().min(0).max(120_000),
+  }).superRefine((v, ctx) => {
+    if (v.match_mode === "regex" && v.keyword) {
+      try { new RegExp(v.keyword); } catch (e) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["keyword"], message: t("monitorForm.regexInvalid", { msg: (e as Error).message }) });
+      }
     }
-  }
-});
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = {
+  name: string;
+  type: "http" | "tcp" | "ping";
+  target: string;
+  interval_minutes: number;
+  timeout_seconds: number;
+  expected_status_codes: string;
+  keyword?: string;
+  match_mode: "contains" | "not_contains" | "regex";
+  http_method: "GET" | "POST" | "HEAD" | "PUT" | "PATCH" | "DELETE";
+  http_body?: string;
+  http_body_type: "json" | "xml" | "text" | "form";
+  http_headers: { key: string; value: string }[];
+  follow_redirects: boolean;
+  ignore_tls_errors: boolean;
+  cert_expiry_warn_days: number;
+  degraded_threshold_ms: number;
+};
 
 function headersObjToArr(h: unknown): { key: string; value: string }[] {
   if (!h || typeof h !== "object") return [];
