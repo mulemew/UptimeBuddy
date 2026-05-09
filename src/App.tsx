@@ -13,6 +13,7 @@ import MonitorNew from "./pages/MonitorNew.tsx";
 import MonitorDetail from "./pages/MonitorDetail.tsx";
 import StatusPage from "./pages/StatusPage.tsx";
 import Settings from "./pages/Settings.tsx";
+import Maintenance from "./pages/Maintenance.tsx";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ function Gate() {
       <Route path="/monitors/new" element={<MonitorNew />} />
       <Route path="/monitors/:id" element={<MonitorDetail />} />
       <Route path="/settings" element={<Settings />} />
+      <Route path="/maintenance" element={<Maintenance />} />
       <Route path="/status" element={<StatusPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
