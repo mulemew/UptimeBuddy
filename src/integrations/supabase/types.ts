@@ -72,6 +72,7 @@ export type Database = {
           response_time_ms: number | null
           status: Database["public"]["Enums"]["monitor_status"]
           status_code: number | null
+          step_name: string | null
         }
         Insert: {
           cert_days_remaining?: number | null
@@ -82,6 +83,7 @@ export type Database = {
           response_time_ms?: number | null
           status: Database["public"]["Enums"]["monitor_status"]
           status_code?: number | null
+          step_name?: string | null
         }
         Update: {
           cert_days_remaining?: number | null
@@ -92,6 +94,7 @@ export type Database = {
           response_time_ms?: number | null
           status?: Database["public"]["Enums"]["monitor_status"]
           status_code?: number | null
+          step_name?: string | null
         }
         Relationships: [
           {
@@ -138,11 +141,50 @@ export type Database = {
           },
         ]
       }
+      maintenance_windows: {
+        Row: {
+          created_at: string
+          ends_at: string
+          id: string
+          monitor_id: string | null
+          recurrence: string
+          starts_at: string
+          title: string
+          weekday: number | null
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          id?: string
+          monitor_id?: string | null
+          recurrence?: string
+          starts_at: string
+          title: string
+          weekday?: number | null
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          id?: string
+          monitor_id?: string | null
+          recurrence?: string
+          starts_at?: string
+          title?: string
+          weekday?: number | null
+        }
+        Relationships: []
+      }
       monitors: {
         Row: {
           cert_expiry_warn_days: number
           created_at: string
+          db_kind: string | null
+          db_query: string | null
+          db_secret_name: string | null
           degraded_threshold_ms: number | null
+          dns_expected_values: string[] | null
+          dns_record_type: string | null
+          dns_resolver: string | null
           enabled: boolean
           expected_status_codes: string
           follow_redirects: boolean
@@ -161,6 +203,11 @@ export type Database = {
           last_status: Database["public"]["Enums"]["monitor_status"]
           match_mode: string
           name: string
+          push_grace_seconds: number
+          push_token: string | null
+          retry_count: number
+          retry_interval_seconds: number
+          steps: Json
           target: string
           timeout_seconds: number
           type: Database["public"]["Enums"]["monitor_type"]
@@ -169,7 +216,13 @@ export type Database = {
         Insert: {
           cert_expiry_warn_days?: number
           created_at?: string
+          db_kind?: string | null
+          db_query?: string | null
+          db_secret_name?: string | null
           degraded_threshold_ms?: number | null
+          dns_expected_values?: string[] | null
+          dns_record_type?: string | null
+          dns_resolver?: string | null
           enabled?: boolean
           expected_status_codes?: string
           follow_redirects?: boolean
@@ -188,6 +241,11 @@ export type Database = {
           last_status?: Database["public"]["Enums"]["monitor_status"]
           match_mode?: string
           name: string
+          push_grace_seconds?: number
+          push_token?: string | null
+          retry_count?: number
+          retry_interval_seconds?: number
+          steps?: Json
           target: string
           timeout_seconds?: number
           type: Database["public"]["Enums"]["monitor_type"]
@@ -196,7 +254,13 @@ export type Database = {
         Update: {
           cert_expiry_warn_days?: number
           created_at?: string
+          db_kind?: string | null
+          db_query?: string | null
+          db_secret_name?: string | null
           degraded_threshold_ms?: number | null
+          dns_expected_values?: string[] | null
+          dns_record_type?: string | null
+          dns_resolver?: string | null
           enabled?: boolean
           expected_status_codes?: string
           follow_redirects?: boolean
@@ -215,6 +279,11 @@ export type Database = {
           last_status?: Database["public"]["Enums"]["monitor_status"]
           match_mode?: string
           name?: string
+          push_grace_seconds?: number
+          push_token?: string | null
+          retry_count?: number
+          retry_interval_seconds?: number
+          steps?: Json
           target?: string
           timeout_seconds?: number
           type?: Database["public"]["Enums"]["monitor_type"]
@@ -232,7 +301,14 @@ export type Database = {
     Enums: {
       keyword_match_type: "contains" | "not_contains"
       monitor_status: "up" | "down" | "pending" | "degraded"
-      monitor_type: "http" | "tcp" | "ping"
+      monitor_type:
+        | "http"
+        | "tcp"
+        | "ping"
+        | "dns"
+        | "multistep"
+        | "database"
+        | "push"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -362,7 +438,15 @@ export const Constants = {
     Enums: {
       keyword_match_type: ["contains", "not_contains"],
       monitor_status: ["up", "down", "pending", "degraded"],
-      monitor_type: ["http", "tcp", "ping"],
+      monitor_type: [
+        "http",
+        "tcp",
+        "ping",
+        "dns",
+        "multistep",
+        "database",
+        "push",
+      ],
     },
   },
 } as const
