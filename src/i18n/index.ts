@@ -216,27 +216,13 @@ const resources = {
   en: {
     translation: {
       common: {
-        loading: "Loading…",
-        save: "Save",
-        cancel: "Cancel",
-        delete: "Delete",
-        edit: "Edit",
-        back: "Back",
-        confirm: "Confirm",
-        enabled: "Enabled",
-        paused: "Paused",
-        minutes: "min",
-        days: "days",
-        seconds: "s",
-        ms: "ms",
+        loading: "Loading…", save: "Save", cancel: "Cancel", delete: "Delete", edit: "Edit",
+        back: "Back", confirm: "Confirm", enabled: "Enabled", paused: "Paused",
+        minutes: "min", days: "days", seconds: "s", ms: "ms", copied: "Copied", saved: "Saved",
       },
       nav: {
-        dashboard: "Dashboard",
-        statusPage: "Status",
-        settings: "Account settings",
-        logout: "Sign out",
-        toggleTheme: "Toggle theme",
-        toggleLang: "Toggle language",
+        dashboard: "Dashboard", statusPage: "Status", settings: "Account settings",
+        maintenance: "Maintenance", logout: "Sign out", toggleTheme: "Toggle theme", toggleLang: "Toggle language",
       },
       auth: {
         setupTitle: "Initialize admin",
