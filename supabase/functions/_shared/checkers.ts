@@ -1,4 +1,5 @@
 // Shared monitor checker logic used by run-checks and check-now.
+import { assertSafeUrl, assertSafeHostPort } from "./ssrf.ts";
 
 export type MonitorType = "http" | "tcp" | "ping";
 export type MatchMode = "contains" | "not_contains" | "regex";
@@ -134,6 +135,7 @@ async function checkHttp(m: Monitor, opts: { forceReadBody?: boolean } = {}): Pr
   let res: Response | null = null;
 
   try {
+    assertSafeUrl(m.target);
     res = await fetch(m.target, init);
     elapsed = Math.round(performance.now() - start);
     statusCode = res.status;
@@ -232,10 +234,11 @@ async function checkHttp(m: Monitor, opts: { forceReadBody?: boolean } = {}): Pr
 }
 
 async function checkTcp(m: Monitor): Promise<CheckResult> {
-  const [host, portStr] = m.target.split(":");
-  const port = parseInt(portStr, 10);
-  if (!host || !port) {
-    return { status: "down", response_time_ms: null, status_code: null, error_message: "Invalid target, expected host:port" };
+  let host: string; let port: number;
+  try {
+    ({ host, port } = assertSafeHostPort(m.target));
+  } catch (e) {
+    return { status: "down", response_time_ms: null, status_code: null, error_message: e instanceof Error ? e.message : String(e) };
   }
   const start = performance.now();
   let conn: Deno.TcpConn | null = null;
