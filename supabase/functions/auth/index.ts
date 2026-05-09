@@ -155,9 +155,15 @@ Deno.serve(async (req) => {
       if (!admin) return json({ error: "尚未初始化" }, 400);
       const { username, password } = body;
       if (typeof username !== "string" || typeof password !== "string") return json({ error: "缺少参数" }, 400);
-      const hash = await hashPassword(password, admin.password_salt);
-      if (username.trim() !== admin.username || hash !== admin.password_hash) {
+      const ok = await verifyPassword(password, admin.password_salt, admin.password_hash);
+      if (username.trim() !== admin.username || !ok) {
         return json({ error: "用户名或密码错误" }, 401);
+      }
+      // Auto-upgrade legacy SHA-256 hashes to PBKDF2.
+      if (!admin.password_hash.startsWith("pbkdf2$")) {
+        const newSalt = randomToken(16);
+        const newHash = await pbkdf2Hash(password, newSalt);
+        await supabase.from("admin_account").update({ password_salt: newSalt, password_hash: newHash }).eq("id", admin.id);
       }
       const newToken = randomToken();
       const expires = new Date(Date.now() + SESSION_TTL_DAYS * 86400_000).toISOString();
@@ -176,8 +182,8 @@ Deno.serve(async (req) => {
       if (!admin) return json({ error: "尚未初始化" }, 400);
       const { current_password, new_username, new_password } = body;
       if (typeof current_password !== "string") return json({ error: "缺少当前密码" }, 400);
-      const curHash = await hashPassword(current_password, admin.password_salt);
-      if (curHash !== admin.password_hash) return json({ error: "当前密码错误" }, 401);
+      const ok = await verifyPassword(current_password, admin.password_salt, admin.password_hash);
+      if (!ok) return json({ error: "当前密码错误" }, 401);
 
       const update: Record<string, string> = {};
       if (new_username !== undefined && new_username !== admin.username) {
