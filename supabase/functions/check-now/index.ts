@@ -1,7 +1,13 @@
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { adminClient, persistResult } from "../_shared/persist.ts";
 import { runCheck, type Monitor } from "../_shared/checkers.ts";
+import { verifySessionToken } from "../_shared/auth.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-session-token",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 const BodySchema = z.object({ monitor_id: z.string().uuid() });
 
@@ -9,6 +15,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const token = req.headers.get("x-session-token");
+    if (!(await verifySessionToken(token))) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const parsed = BodySchema.safeParse(await req.json());
     if (!parsed.success) {
       return new Response(JSON.stringify({ error: parsed.error.flatten().fieldErrors }), {

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { saveMonitor } from "@/lib/monitors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -143,12 +143,10 @@ export function MonitorForm({ initial, onSaved }: { initial?: Monitor; onSaved?:
         degraded_threshold_ms: values.degraded_threshold_ms || null,
       };
       if (initial) {
-        const { error } = await supabase.from("monitors").update(payload as never).eq("id", initial.id);
-        if (error) throw error;
+        await saveMonitor(payload, initial.id);
         toast.success(t("monitorForm.savedOk"));
       } else {
-        const { error } = await supabase.from("monitors").insert(payload as never);
-        if (error) throw error;
+        await saveMonitor(payload);
         toast.success(t("monitorForm.createdOk"));
         navigate("/");
       }

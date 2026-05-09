@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.auth]
 verify_jwt = false
+
+[functions.monitors-admin]
+verify_jwt = false

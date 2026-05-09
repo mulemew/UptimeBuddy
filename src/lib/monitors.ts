@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { invokeAuthed } from "@/lib/auth";
 import type { Database } from "@/integrations/supabase/types";
 
 export type Monitor = Database["public"]["Tables"]["monitors"]["Row"];
@@ -80,17 +81,21 @@ export function avgResponse(beats: Heartbeat[]): number | null {
 }
 
 export async function checkNow(monitorId: string) {
-  const { data, error } = await supabase.functions.invoke("check-now", { body: { monitor_id: monitorId } });
-  if (error) throw error;
-  return data;
+  return await invokeAuthed("check-now", { monitor_id: monitorId });
 }
 
 export async function deleteMonitor(id: string) {
-  const { error } = await supabase.from("monitors").delete().eq("id", id);
-  if (error) throw error;
+  await invokeAuthed("monitors-admin", { action: "delete", id });
 }
 
 export async function toggleMonitor(id: string, enabled: boolean) {
-  const { error } = await supabase.from("monitors").update({ enabled }).eq("id", id);
-  if (error) throw error;
+  await invokeAuthed("monitors-admin", { action: "toggle", id, enabled });
+}
+
+export async function saveMonitor(payload: Record<string, unknown>, id?: string) {
+  if (id) {
+    await invokeAuthed("monitors-admin", { action: "update", id, payload });
+  } else {
+    await invokeAuthed("monitors-admin", { action: "create", payload });
+  }
 }

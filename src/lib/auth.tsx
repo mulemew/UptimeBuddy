@@ -26,14 +26,13 @@ export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-async function call(action: string, body: Record<string, unknown> = {}) {
+export async function invokeAuthed(fn: string, body: Record<string, unknown> = {}) {
   const token = getToken();
-  const { data, error } = await supabase.functions.invoke("auth", {
-    body: { action, ...body },
+  const { data, error } = await supabase.functions.invoke(fn, {
+    body,
     headers: token ? { "x-session-token": token } : undefined,
   });
   if (error) {
-    // Try to parse server error message
     const ctx = (error as { context?: Response }).context;
     if (ctx) {
       try {
@@ -45,7 +44,14 @@ async function call(action: string, body: Record<string, unknown> = {}) {
     }
     throw error;
   }
+  if (data && typeof data === "object" && "error" in data && (data as { error?: string }).error) {
+    throw new Error((data as { error: string }).error);
+  }
   return data;
+}
+
+async function call(action: string, body: Record<string, unknown> = {}) {
+  return invokeAuthed("auth", { action, ...body });
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

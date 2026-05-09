@@ -13,10 +13,48 @@ const supabase = createClient(
 
 const SESSION_TTL_DAYS = 30;
 
-async function hashPassword(password: string, salt: string): Promise<string> {
-  const data = new TextEncoder().encode(password + ":" + salt);
-  const buf = await crypto.subtle.digest("SHA-256", data);
+const PBKDF2_ITERATIONS = 600_000;
+const PBKDF2_PREFIX = `pbkdf2$sha256$${PBKDF2_ITERATIONS}$`;
+
+function toHex(buf: ArrayBuffer): string {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function legacySha256(password: string, salt: string): Promise<string> {
+  const data = new TextEncoder().encode(password + ":" + salt);
+  return toHex(await crypto.subtle.digest("SHA-256", data));
+}
+
+async function pbkdf2Hash(password: string, salt: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode(salt), iterations: PBKDF2_ITERATIONS },
+    key, 256,
+  );
+  return PBKDF2_PREFIX + toHex(bits);
+}
+
+async function hashPassword(password: string, salt: string): Promise<string> {
+  return pbkdf2Hash(password, salt);
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+
+async function verifyPassword(password: string, salt: string, stored: string): Promise<boolean> {
+  if (stored.startsWith("pbkdf2$")) {
+    const candidate = await pbkdf2Hash(password, salt);
+    return timingSafeEqual(candidate, stored);
+  }
+  // Legacy SHA-256 fallback
+  const candidate = await legacySha256(password, salt);
+  return timingSafeEqual(candidate, stored);
 }
 
 function randomToken(bytes = 32): string {
@@ -117,9 +155,15 @@ Deno.serve(async (req) => {
       if (!admin) return json({ error: "尚未初始化" }, 400);
       const { username, password } = body;
       if (typeof username !== "string" || typeof password !== "string") return json({ error: "缺少参数" }, 400);
-      const hash = await hashPassword(password, admin.password_salt);
-      if (username.trim() !== admin.username || hash !== admin.password_hash) {
+      const ok = await verifyPassword(password, admin.password_salt, admin.password_hash);
+      if (username.trim() !== admin.username || !ok) {
         return json({ error: "用户名或密码错误" }, 401);
+      }
+      // Auto-upgrade legacy SHA-256 hashes to PBKDF2.
+      if (!admin.password_hash.startsWith("pbkdf2$")) {
+        const newSalt = randomToken(16);
+        const newHash = await pbkdf2Hash(password, newSalt);
+        await supabase.from("admin_account").update({ password_salt: newSalt, password_hash: newHash }).eq("id", admin.id);
       }
       const newToken = randomToken();
       const expires = new Date(Date.now() + SESSION_TTL_DAYS * 86400_000).toISOString();
@@ -138,8 +182,8 @@ Deno.serve(async (req) => {
       if (!admin) return json({ error: "尚未初始化" }, 400);
       const { current_password, new_username, new_password } = body;
       if (typeof current_password !== "string") return json({ error: "缺少当前密码" }, 400);
-      const curHash = await hashPassword(current_password, admin.password_salt);
-      if (curHash !== admin.password_hash) return json({ error: "当前密码错误" }, 401);
+      const ok = await verifyPassword(current_password, admin.password_salt, admin.password_hash);
+      if (!ok) return json({ error: "当前密码错误" }, 401);
 
       const update: Record<string, string> = {};
       if (new_username !== undefined && new_username !== admin.username) {
