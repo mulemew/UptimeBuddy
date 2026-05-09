@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.monitors-admin]
 verify_jwt = false
+
+[functions.heartbeat-ingest]
+verify_jwt = false
