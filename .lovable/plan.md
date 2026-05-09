@@ -1,71 +1,107 @@
 ## 目标
 
-扩展现有 HTTP/HTTPS 监控能力，从简单 GET + 状态码 + 关键字检查，升级为生产级 HTTP 探测器，覆盖请求方法、自定义 Headers/Body、SSL 校验、正则匹配、响应时间降级等。
+为监控系统新增 7 项能力：抖动重试、维护窗口、DNS 监控、多步 API 监控、远程数据库监控、被动心跳（Cron 监控）、历史曲线图断点处理。
 
-## 数据库变更
+---
 
-`monitors` 表新增字段：
+## 1. 故障重试（防抖）
 
-- `http_method` text default `'GET'`（GET/POST/HEAD/PUT/PATCH/DELETE）
-- `http_body` text nullable（请求体原文）
-- `http_body_type` text nullable（json/xml/text/form）
-- `http_headers` jsonb default `'{}'`（键值对）
-- `follow_redirects` boolean default `true`
-- `ignore_tls_errors` boolean default `false`
-- `cert_expiry_warn_days` integer default `14`（0 表示不监控证书）
-- `match_mode` text default `'contains'`（contains / not_contains / regex）—— 取代旧的 `keyword_match`，并对 regex 复用同一字段
-- `degraded_threshold_ms` integer nullable（>0 时启用降级判定）
+`monitors` 新增 `retry_count int default 0`、`retry_interval_seconds int default 20`。
 
-`heartbeats` 表新增：
+`run-checks` / `check-now` 检查到 `down` 时，立即在内存里串行重试 `retry_count` 次（每次间隔 `retry_interval_seconds`）。全部失败才落 `down` 心跳并开事件；任何一次成功则按成功结果落库（不开事件）。`degraded` 不参与重试。
 
-- `cert_days_remaining` integer nullable
-- 状态枚举从 `up/down` 扩展为 `up/down/degraded`（新增 enum 值）
+UI：MonitorForm 高级面板新增"失败重试次数"+"重试间隔(秒)"。
 
-`monitors.last_status` 同样支持 `degraded`。
+---
 
-迁移策略：保留旧 `keyword_match` 字段，初始化时把数据复制到新 `match_mode`；前端不再写旧字段。
+## 2. 维护窗口
 
-## 边缘函数变更（`supabase/functions/_shared/checkers.ts`）
+新表 `maintenance_windows`：
+- `id, monitor_id (nullable=全局), title, starts_at timestamptz, ends_at timestamptz, recurrence text default 'none'`（none/daily/weekly）, `weekday int null`, `created_at`。
+- RLS：public read（状态页展示），写操作走 `monitors-admin` 新增 action `maintenance.*`。
 
-`checkHttp` 重构：
+调度时：进入窗口的监控**跳过检查**（不写心跳、不开事件），UI 在 MonitorCard / 状态页显示"维护中"徽章。
 
-1. 用 `monitor.http_method`（HEAD 时不读 body；GET 视 keyword 是否存在再决定读 body）
-2. 注入 `monitor.http_headers` 与 `monitor.http_body`（按 body_type 设置 Content-Type 默认值，用户显式 header 优先）
-3. `redirect: monitor.follow_redirects ? 'follow' : 'manual'`；非 follow 时 3xx 视为正常状态码
-4. TLS 忽略：Deno fetch 不支持禁用证书校验，因此 `ignore_tls_errors` 仅在错误信息含 `certificate` / `TLS` 时把 down 转 up（标注降级原因）—— UI 中说明限制
-5. 证书到期：HTTPS 目标每次检查时通过 `Deno.connectTls` 抓取 `peerCertificates`，计算剩余天数；少于 `cert_expiry_warn_days` 标记 degraded
-6. 匹配：`match_mode` = contains / not_contains / regex（regex 用 `new RegExp(keyword)`，编译失败 → down）
-7. 响应时间降级：状态码与关键字均通过，但 `elapsed > degraded_threshold_ms` → status = degraded
+新页面 `Settings` 增加"维护窗口"标签页（或独立 `/maintenance` 路由），列表 + 新增/编辑/删除。
 
-`persist.ts` 调整：incident 仅在 `down` 时开/关，`degraded` 不开 incident 但记录心跳；`monitors.last_status` 存 up/down/degraded。
+---
 
-## 前端变更
+## 3. DNS 监控
 
-**`MonitorForm.tsx`**：HTTP / Keyword 类型下展开"高级"折叠面板（shadcn `Accordion`）：
+`monitor_type` enum 新增 `dns`。`monitors` 新增：
+- `dns_record_type text`（A/AAAA/CNAME/MX/TXT/NS）
+- `dns_resolver text null`（默认系统）
+- `dns_expected_values text[] null`（任一匹配即 up；空则只校验"能解析"）
 
-- Method 下拉
-- Headers 编辑器（动态键值对行，新增/删除按钮）
-- Body 编辑器（Textarea + body_type 下拉），HEAD/GET 隐藏
-- 跟随重定向开关
-- 忽略 TLS 错误开关 + 证书预警天数输入
-- 匹配模式下拉（contains / not_contains / regex）替换原 keyword_match
-- 响应时间降级阈值输入
+`checkers.ts` 新增 `checkDns`，使用 `Deno.resolveDns(host, type, { nameServer })`。匹配模式：所有期望值需出现在结果中（或单个匹配，按 `match_mode`）。失败/超时 → down。
 
-Zod 校验：headers 不超 30 项、键非空；regex 模式下尝试编译；body 限制 32KB。
+UI：MonitorForm 当 type=dns 时显示记录类型 / 解析器 / 期望值多行输入。
 
-**状态色**：`index.css` / `tailwind.config.ts` 新增 `--status-degraded`（琥珀色）。`StatusBadge`、`StatusBar`、`MonitorCard` 支持新状态。
+---
 
-**`MonitorDetail.tsx`**：心跳列表展示证书剩余天数（HTTPS）；事件列表保持原样（degraded 不计入）。
+## 4. 多步 API 监控
+
+`monitor_type` enum 新增 `multistep`。`monitors` 新增 `steps jsonb default '[]'`，每步：
+```
+{ name, method, url, headers, body, body_type,
+  expected_status_codes, extract: [{name, from:"json"|"header", path}],
+  assert: [{path, op:"eq"|"contains"|"regex", value}] }
+```
+变量替换 `{{var}}` 在 url/headers/body 中生效，由前一步 `extract` 写入上下文。
+
+`checkers.ts` 新增 `checkMultiStep`：顺序执行，任一步失败即 down 并记录步骤名 + 原因；累计耗时为 `response_time_ms`。
+
+UI：新增 `MultiStepEditor` 子组件（步骤增删 + 折叠卡片），仅在 type=multistep 时渲染。
+
+SSRF 守卫复用 `assertSafeUrl`。
+
+---
+
+## 5. 远程数据库监控
+
+`monitor_type` enum 新增 `database`。新增 `db_kind text`（postgres/mysql）、`db_dsn text`（密文存储——存项目 secret 引用名而不是明文：字段存 `db_secret_name`，真实 DSN 在 Supabase Secrets 里）、`db_query text default 'SELECT 1'`。
+
+`checkers.ts` 新增 `checkDatabase`：根据 `db_kind` 用 `npm:postgres` / `npm:mysql2` 连接并执行查询，校验返回行数 ≥ 1。SSRF 守卫校验主机不在私网（与现有 ssrf.ts 复用）。
+
+UI：MonitorForm 当 type=database 时显示 DSN secret 名称选择 + 测试 SQL。文档提示用户先在 Cloud Secrets 添加 `MON_DB_<NAME>` 形式的密钥。
+
+---
+
+## 6. 被动心跳 (Push Monitor)
+
+`monitor_type` enum 新增 `push`。`monitors` 新增：
+- `push_token text unique`（创建时自动生成 32 字节 hex）
+- `push_grace_seconds int default 60`（在 `interval_minutes*60 + grace` 内未收到即判 down）
+
+新边缘函数 `heartbeat-ingest`（公开，不验 JWT）：`GET/POST /heartbeat-ingest?token=xxx[&status=up|down][&msg=...]` → 写心跳 status=up，更新 `last_checked_at`。
+
+`run-checks` 对 `type=push` 的监控不主动探测，但每轮检查 `now - last_checked_at > interval+grace` 则写入一条 `down` 心跳并开事件（仅当上一状态非 down，避免重复）。
+
+UI：MonitorForm type=push 显示生成的 webhook URL（带复制按钮）+ grace 输入。Detail 页同样展示 URL。
+
+---
+
+## 7. 历史曲线断点
+
+当前 `MonitorDetail` 用 recharts `Line` 直接连点，暂停期会被拉成横线。
+
+修改：在数据准备阶段，按时间排序后扫描相邻点，若 `Δt > interval_minutes * 2`（或监控被禁用 / 在维护窗口内），插入 `{ checked_at, response_time_ms: null }`。recharts `Line` 默认 `connectNulls={false}`，断开渲染。同时在 `Area` 图（如有）做同样处理。
+
+---
+
+## 技术细节小结
+
+- DB 迁移合并为 1 个 SQL：扩 enum、加列、建 `maintenance_windows`、RLS 调整。
+- `monitors-admin` 函数扩展 actions：`maintenance.create/update/delete`、`push.regenerate_token`。
+- `checkers.ts` 拆分：`http.ts` / `dns.ts` / `db.ts` / `multistep.ts` / `push.ts`，统一 `runCheck` dispatcher。
+- 重试逻辑放在 `persist.ts` 调用前的 wrapper 中。
+- i18n：新增所有新字段的中英文键。
+- 设计系统不变；维护中徽章复用 `--status-degraded` 加斜杠纹理或新 `--status-maintenance` token（蓝灰色）。
 
 ## 范围之外
 
-POST 文件上传、mTLS 客户端证书、Cookie Jar、HTTP/2 帧级指标。
-
-## 实施顺序
-
-1. 数据库迁移（字段 + degraded enum 值）
-2. 重写 checkers.ts 的 HTTP 分支 + 证书检查逻辑 + persist 状态写入
-3. 设计系统加 degraded 色 token
-4. 重构 MonitorForm 加高级面板
-5. 更新 StatusBadge / StatusBar / MonitorCard / MonitorDetail 渲染 degraded 与证书天数
-6. 端到端验证（http://httpbin.org 测 POST/Headers/Status；过期证书测试可选）
+- 多步 API 的 GraphQL / gRPC
+- DNS DNSSEC 校验
+- 数据库连接池、读写延迟分桶
+- 维护窗口的复杂 cron 表达式（仅支持 none/daily/weekly）
+- 心跳的签名校验（仅 token）
