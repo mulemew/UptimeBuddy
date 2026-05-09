@@ -87,9 +87,23 @@ export default function MonitorDetail() {
 
   const uptime = uptimePercent(rangeBeats);
   const avg = avgResponse(rangeBeats);
-  const chartData = rangeBeats
-    .filter((b) => b.response_time_ms != null)
-    .map((b) => ({ t: new Date(b.checked_at).getTime(), ms: b.response_time_ms, status: b.status }));
+  const chartData = useMemo(() => {
+    const points: { t: number; ms: number | null; status?: string }[] = [];
+    const sorted = [...rangeBeats].sort((a, b) => Date.parse(a.checked_at) - Date.parse(b.checked_at));
+    const intervalMs = (monitor.interval_minutes ?? 5) * 60 * 1000;
+    const gapThreshold = Math.max(intervalMs * 2.5, 90_000);
+    let prevT: number | null = null;
+    for (const b of sorted) {
+      if (b.response_time_ms == null) continue;
+      const tt = Date.parse(b.checked_at);
+      if (prevT != null && tt - prevT > gapThreshold) {
+        points.push({ t: prevT + 1, ms: null });
+      }
+      points.push({ t: tt, ms: b.response_time_ms, status: b.status });
+      prevT = tt;
+    }
+    return points;
+  }, [rangeBeats, monitor.interval_minutes]);
 
   async function onCheckNow() {
     setChecking(true);
@@ -210,7 +224,7 @@ export default function MonitorDetail() {
                             formatter={(v: number) => [`${v} ms`, t("detail.responseTooltip")]}
                             contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                           />
-                          <Line type="monotone" dataKey="ms" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="ms" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} connectNulls={false} isAnimationActive={false} />
                         </LineChart>
                       </ResponsiveContainer>
                     )}

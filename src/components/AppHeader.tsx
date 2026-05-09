@@ -18,6 +18,9 @@ export function AppHeader() {
         <nav className="flex items-center gap-1 text-sm">
           <Link to="/" className="px-3 py-1.5 text-muted-foreground hover:text-foreground">{t("nav.dashboard")}</Link>
           <Link to="/status" className="px-3 py-1.5 text-muted-foreground hover:text-foreground">{t("nav.statusPage")}</Link>
+          {authenticated && (
+            <Link to="/maintenance" className="px-3 py-1.5 text-muted-foreground hover:text-foreground">{t("nav.maintenance")}</Link>
+          )}
           <LangToggle />
           <ThemeToggle />
           {authenticated && (

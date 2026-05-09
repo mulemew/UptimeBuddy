@@ -20,6 +20,7 @@ export async function persistResult(sb: SupabaseClient, monitor: Monitor & { las
     status_code: result.status_code,
     error_message: result.error_message,
     cert_days_remaining: result.cert_days_remaining ?? null,
+    step_name: result.step_name ?? null,
   });
 
   await sb.from("monitors").update({
