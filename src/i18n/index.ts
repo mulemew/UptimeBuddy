@@ -72,6 +72,7 @@ const resources = {
       dashboard: {
         title: "监控仪表盘",
         summary: "{{total}} 个监控 · {{up}} 正常 · {{down}} 宕机",
+        maintenance: "{{n}} 个维护中",
         addMonitor: "添加监控",
         empty: "尚无监控",
         emptyDesc: "添加第一个监控以开始追踪服务可用性。",
