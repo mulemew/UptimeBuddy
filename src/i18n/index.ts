@@ -76,6 +76,9 @@ const resources = {
         addMonitor: "添加监控",
         empty: "尚无监控",
         emptyDesc: "添加第一个监控以开始追踪服务可用性。",
+        searchPlaceholder: "搜索名称或目标…",
+        noMatch: "没有匹配的监控",
+        filter: { all: "全部状态" },
       },
       monitorCard: {
         intervalLabel: "每 {{n}} 分钟检查",
@@ -274,6 +277,9 @@ const resources = {
         addMonitor: "Add monitor",
         empty: "No monitors yet",
         emptyDesc: "Add your first monitor to start tracking service availability.",
+        searchPlaceholder: "Search name or target…",
+        noMatch: "No monitors match",
+        filter: { all: "All statuses" },
       },
       monitorCard: {
         intervalLabel: "Every {{n}} min",

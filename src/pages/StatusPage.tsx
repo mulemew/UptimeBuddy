@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { listMonitors, recentHeartbeats, uptimePercent, type Monitor } from "@/lib/monitors";
+import { listMonitors, listMaintenance, recentHeartbeats, uptimePercent, type Monitor } from "@/lib/monitors";
+import { activeMaintenanceFor } from "@/lib/maintenance";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StatusBar } from "@/components/StatusBar";
 import { Card } from "@/components/ui/card";
 
-function StatusRow({ monitor }: { monitor: Monitor }) {
+function StatusRow({ monitor, maintenance }: { monitor: Monitor; maintenance: boolean }) {
   const { t } = useTranslation();
   const { data: beats = [] } = useQuery({
     queryKey: ["heartbeats", monitor.id, "status"],
@@ -18,7 +19,13 @@ function StatusRow({ monitor }: { monitor: Monitor }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <h3 className="truncate font-medium">{monitor.name}</h3>
-          <StatusBadge status={monitor.last_status} />
+          {maintenance ? (
+            <span className="rounded-full bg-status-pending/15 px-2 py-0.5 text-xs font-medium text-status-pending">
+              {t("common.maintenance")}
+            </span>
+          ) : (
+            <StatusBadge status={monitor.last_status} />
+          )}
         </div>
         <p className="mt-1 text-xs text-muted-foreground">{t("status.onlinePercent", { n: uptimePercent(beats) })}</p>
       </div>
@@ -34,10 +41,17 @@ export default function StatusPage() {
     queryFn: listMonitors,
     refetchInterval: 60_000,
   });
+  const { data: windows = [] } = useQuery({
+    queryKey: ["maintenance-windows"],
+    queryFn: listMaintenance,
+    refetchInterval: 60_000,
+  });
 
   const enabled = monitors.filter((m) => m.enabled);
-  const allUp = enabled.length > 0 && enabled.every((m) => m.last_status === "up");
-  const anyDown = enabled.some((m) => m.last_status === "down");
+  const inMaint = (id: string) => activeMaintenanceFor(windows, id);
+  const checked = enabled.filter((m) => !inMaint(m.id));
+  const allUp = checked.length > 0 && checked.every((m) => m.last_status === "up");
+  const anyDown = checked.some((m) => m.last_status === "down");
 
   return (
     <div className="min-h-screen bg-background">
@@ -58,7 +72,7 @@ export default function StatusPage() {
             <p className="py-6 text-center text-sm text-muted-foreground">{t("status.noMonitors")}</p>
           ) : (
             <div>
-              {enabled.map((m) => <StatusRow key={m.id} monitor={m} />)}
+              {enabled.map((m) => <StatusRow key={m.id} monitor={m} maintenance={inMaint(m.id)} />)}
             </div>
           )}
         </Card>
