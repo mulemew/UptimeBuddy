@@ -76,21 +76,12 @@ export default function MonitorDetail() {
     return () => { supabase.removeChannel(ch); };
   }, [id, qc]);
 
-  if (!monitor) {
-    return (
-      <div className="min-h-screen bg-background">
-        <AppHeader />
-        <main className="container py-8 text-muted-foreground">{t("common.loading")}</main>
-      </div>
-    );
-  }
-
   const uptime = uptimePercent(rangeBeats);
   const avg = avgResponse(rangeBeats);
   const chartData = useMemo(() => {
     const points: { t: number; ms: number | null; status?: string }[] = [];
     const sorted = [...rangeBeats].sort((a, b) => Date.parse(a.checked_at) - Date.parse(b.checked_at));
-    const intervalMs = (monitor.interval_minutes ?? 5) * 60 * 1000;
+    const intervalMs = (monitor?.interval_minutes ?? 5) * 60 * 1000;
     const gapThreshold = Math.max(intervalMs * 2.5, 90_000);
     let prevT: number | null = null;
     for (const b of sorted) {
