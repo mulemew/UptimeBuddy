@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { listMonitors } from "@/lib/monitors";
+import { listMonitors, listMaintenance } from "@/lib/monitors";
+import { activeMaintenanceFor } from "@/lib/maintenance";
 import { AppHeader } from "@/components/AppHeader";
 import { MonitorCard } from "@/components/MonitorCard";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,11 @@ const Index = () => {
     queryKey: ["monitors"],
     queryFn: listMonitors,
     refetchInterval: 30_000,
+  });
+  const { data: windows = [] } = useQuery({
+    queryKey: ["maintenance-windows"],
+    queryFn: listMaintenance,
+    refetchInterval: 60_000,
   });
 
   useEffect(() => {
@@ -32,8 +38,11 @@ const Index = () => {
     return () => { supabase.removeChannel(channel); };
   }, [qc]);
 
-  const upCount = monitors.filter((m) => m.last_status === "up").length;
-  const downCount = monitors.filter((m) => m.last_status === "down").length;
+  const inMaint = (id: string) => activeMaintenanceFor(windows, id);
+  const upCount = monitors.filter((m) => m.last_status === "up" && !inMaint(m.id)).length;
+  const downCount = monitors.filter((m) => m.last_status === "down" && !inMaint(m.id)).length;
+  const maintCount = monitors.filter((m) => inMaint(m.id)).length;
+
 
   return (
     <div className="min-h-screen bg-background">
