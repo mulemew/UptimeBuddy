@@ -224,6 +224,7 @@ const resources = {
         loading: "Loading…", save: "Save", cancel: "Cancel", delete: "Delete", edit: "Edit",
         back: "Back", confirm: "Confirm", enabled: "Enabled", paused: "Paused",
         minutes: "min", days: "days", seconds: "s", ms: "ms", copied: "Copied", saved: "Saved",
+        maintenance: "Maintenance",
       },
       nav: {
         dashboard: "Dashboard", statusPage: "Status", settings: "Account settings",
