@@ -172,10 +172,22 @@ export default function Maintenance() {
             <ul className="divide-y">
               {items.map((it) => {
                 const monitor = monitors.find((m) => m.id === it.monitor_id);
+                const state = windowState(it, new Date());
+                const badgeClass =
+                  state === "active"
+                    ? "bg-status-up/15 text-status-up"
+                    : state === "upcoming"
+                      ? "bg-status-pending/15 text-status-pending"
+                      : "bg-muted text-muted-foreground";
                 return (
-                  <li key={it.id} className="flex items-center justify-between py-3">
-                    <div>
-                      <div className="text-sm font-medium">{it.title}</div>
+                  <li key={it.id} className={`flex items-center justify-between py-3 ${state === "expired" ? "opacity-60" : ""}`}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <span className="truncate">{it.title}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}>
+                          {t(`maintenance.status${state.charAt(0).toUpperCase() + state.slice(1)}`)}
+                        </span>
+                      </div>
                       <div className="text-xs text-muted-foreground">
                         {it.monitor_id ? (monitor?.name ?? it.monitor_id) : t("maintenance.allMonitors")} · {it.recurrence}
                         {it.recurrence === "weekly" && it.weekday != null ? ` · ${t(`maintenance.weekdays.${it.weekday}`)}` : ""}
