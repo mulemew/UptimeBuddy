@@ -21,6 +21,7 @@ const resources = {
         ms: "ms",
         copied: "已复制",
         saved: "已保存",
+        maintenance: "维护中",
       },
       nav: {
         dashboard: "仪表盘",
@@ -71,6 +72,7 @@ const resources = {
       dashboard: {
         title: "监控仪表盘",
         summary: "{{total}} 个监控 · {{up}} 正常 · {{down}} 宕机",
+        maintenance: "{{n}} 个维护中",
         addMonitor: "添加监控",
         empty: "尚无监控",
         emptyDesc: "添加第一个监控以开始追踪服务可用性。",
@@ -222,6 +224,7 @@ const resources = {
         loading: "Loading…", save: "Save", cancel: "Cancel", delete: "Delete", edit: "Edit",
         back: "Back", confirm: "Confirm", enabled: "Enabled", paused: "Paused",
         minutes: "min", days: "days", seconds: "s", ms: "ms", copied: "Copied", saved: "Saved",
+        maintenance: "Maintenance",
       },
       nav: {
         dashboard: "Dashboard", statusPage: "Status", settings: "Account settings",
@@ -267,6 +270,7 @@ const resources = {
       dashboard: {
         title: "Monitor dashboard",
         summary: "{{total}} monitors · {{up}} up · {{down}} down",
+        maintenance: "{{n}} in maintenance",
         addMonitor: "Add monitor",
         empty: "No monitors yet",
         emptyDesc: "Add your first monitor to start tracking service availability.",

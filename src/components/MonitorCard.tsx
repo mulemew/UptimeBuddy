@@ -8,7 +8,7 @@ import { recentHeartbeats, uptimePercent, avgResponse, type Monitor } from "@/li
 import { formatDistanceToNow } from "date-fns";
 import { dfLocale } from "@/lib/dateLocale";
 
-export function MonitorCard({ monitor }: { monitor: Monitor }) {
+export function MonitorCard({ monitor, maintenance = false }: { monitor: Monitor; maintenance?: boolean }) {
   const { t } = useTranslation();
   const { data: beats = [] } = useQuery({
     queryKey: ["heartbeats", monitor.id, "card"],
@@ -27,6 +27,11 @@ export function MonitorCard({ monitor }: { monitor: Monitor }) {
             <div className="flex items-center gap-2">
               <h3 className="truncate text-base font-semibold">{monitor.name}</h3>
               <StatusBadge status={monitor.last_status} />
+              {maintenance && (
+                <span className="rounded-full bg-status-pending/15 px-2 py-0.5 text-xs font-medium text-status-pending">
+                  {t("common.maintenance")}
+                </span>
+              )}
               {!monitor.enabled && (
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{t("common.paused")}</span>
               )}
