@@ -8,7 +8,7 @@ import { recentHeartbeats, uptimePercent, avgResponse, type Monitor } from "@/li
 import { formatDistanceToNow } from "date-fns";
 import { dfLocale } from "@/lib/dateLocale";
 
-export function MonitorCard({ monitor }: { monitor: Monitor }) {
+export function MonitorCard({ monitor, maintenance = false }: { monitor: Monitor; maintenance?: boolean }) {
   const { t } = useTranslation();
   const { data: beats = [] } = useQuery({
     queryKey: ["heartbeats", monitor.id, "card"],
