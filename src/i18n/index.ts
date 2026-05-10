@@ -206,6 +206,9 @@ const resources = {
         weekdays: { 0: "周日", 1: "周一", 2: "周二", 3: "周三", 4: "周四", 5: "周五", 6: "周六" },
         deleteConfirm: "删除该维护窗口？",
         fillAll: "请填写所有必填项",
+        statusActive: "进行中",
+        statusUpcoming: "未开始",
+        statusExpired: "已过期",
       },
       notFound: {
         notFound: "页面未找到",
@@ -391,6 +394,9 @@ const resources = {
         weekdays: { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" },
         deleteConfirm: "Delete this window?",
         fillAll: "Please fill all required fields",
+        statusActive: "Active",
+        statusUpcoming: "Upcoming",
+        statusExpired: "Expired",
       },
       notFound: {
         notFound: "Page not found",
