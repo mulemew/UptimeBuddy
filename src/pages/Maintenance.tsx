@@ -16,6 +16,25 @@ function toLocalInput(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function windowState(w: MaintenanceWindow, now: Date): "active" | "upcoming" | "expired" {
+  const s = new Date(w.starts_at);
+  const e = new Date(w.ends_at);
+  if (w.recurrence === "none") {
+    if (now < s) return "upcoming";
+    if (now > e) return "expired";
+    return "active";
+  }
+  const dur = e.getTime() - s.getTime();
+  const todayStart = new Date(now);
+  todayStart.setHours(s.getHours(), s.getMinutes(), 0, 0);
+  const inSlot =
+    (w.recurrence === "daily" || (w.recurrence === "weekly" && now.getDay() === w.weekday)) &&
+    now.getTime() >= todayStart.getTime() &&
+    now.getTime() <= todayStart.getTime() + dur;
+  return inSlot ? "active" : "upcoming";
+}
+
+
 export default function Maintenance() {
   const { t } = useTranslation();
   const [items, setItems] = useState<MaintenanceWindow[]>([]);
