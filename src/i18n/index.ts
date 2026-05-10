@@ -206,6 +206,9 @@ const resources = {
         weekdays: { 0: "周日", 1: "周一", 2: "周二", 3: "周三", 4: "周四", 5: "周五", 6: "周六" },
         deleteConfirm: "删除该维护窗口？",
         fillAll: "请填写所有必填项",
+        statusActive: "进行中",
+        statusUpcoming: "未开始",
+        statusExpired: "已过期",
       },
       notFound: {
         notFound: "页面未找到",
