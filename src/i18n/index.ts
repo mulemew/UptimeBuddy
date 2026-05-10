@@ -277,6 +277,9 @@ const resources = {
         addMonitor: "Add monitor",
         empty: "No monitors yet",
         emptyDesc: "Add your first monitor to start tracking service availability.",
+        searchPlaceholder: "Search name or target…",
+        noMatch: "No monitors match",
+        filter: { all: "All statuses" },
       },
       monitorCard: {
         intervalLabel: "Every {{n}} min",
