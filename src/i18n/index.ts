@@ -394,6 +394,9 @@ const resources = {
         weekdays: { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" },
         deleteConfirm: "Delete this window?",
         fillAll: "Please fill all required fields",
+        statusActive: "Active",
+        statusUpcoming: "Upcoming",
+        statusExpired: "Expired",
       },
       notFound: {
         notFound: "Page not found",
