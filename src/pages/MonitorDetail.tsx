@@ -94,7 +94,16 @@ export default function MonitorDetail() {
       prevT = tt;
     }
     return points;
-  }, [rangeBeats, monitor.interval_minutes]);
+  }, [rangeBeats, monitor?.interval_minutes]);
+
+  if (!monitor) {
+    return (
+      <div className="min-h-screen bg-background">
+        <AppHeader />
+        <main className="container py-8 text-muted-foreground">{t("common.loading")}</main>
+      </div>
+    );
+  }
 
   async function onCheckNow() {
     setChecking(true);
