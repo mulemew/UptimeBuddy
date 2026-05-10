@@ -74,7 +74,7 @@ const Index = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {monitors.map((m) => <MonitorCard key={m.id} monitor={m} />)}
+            {monitors.map((m) => <MonitorCard key={m.id} monitor={m} maintenance={inMaint(m.id)} />)}
           </div>
         )}
       </main>
