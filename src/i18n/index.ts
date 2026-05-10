@@ -21,6 +21,7 @@ const resources = {
         ms: "ms",
         copied: "已复制",
         saved: "已保存",
+        maintenance: "维护中",
       },
       nav: {
         dashboard: "仪表盘",
