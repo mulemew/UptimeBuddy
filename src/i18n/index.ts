@@ -270,6 +270,7 @@ const resources = {
       dashboard: {
         title: "Monitor dashboard",
         summary: "{{total}} monitors · {{up}} up · {{down}} down",
+        maintenance: "{{n}} in maintenance",
         addMonitor: "Add monitor",
         empty: "No monitors yet",
         emptyDesc: "Add your first monitor to start tracking service availability.",
