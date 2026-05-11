@@ -46,9 +46,9 @@ const Index = () => {
   }, [qc]);
 
   const inMaint = (id: string) => activeMaintenanceFor(windows, id);
-  const upCount = monitors.filter((m) => m.last_status === "up" && !inMaint(m.id)).length;
-  const downCount = monitors.filter((m) => m.last_status === "down" && !inMaint(m.id)).length;
-  const maintCount = monitors.filter((m) => inMaint(m.id)).length;
+  const upCount = monitors.filter((m) => m.enabled && !inMaint(m.id) && m.last_status === "up").length;
+  const downCount = monitors.filter((m) => m.enabled && !inMaint(m.id) && m.last_status === "down").length;
+  const maintCount = monitors.filter((m) => m.enabled && inMaint(m.id)).length;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
