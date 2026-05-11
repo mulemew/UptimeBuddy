@@ -73,6 +73,7 @@ const Index = () => {
             <p className="mt-1 text-sm text-muted-foreground">
               {t("dashboard.summary", { total: monitors.length, up: upCount, down: downCount })}
               {maintCount > 0 ? ` · ${t("dashboard.maintenance", { n: maintCount })}` : ""}
+              {pausedCount > 0 ? ` · ${t("dashboard.paused", { n: pausedCount })}` : ""}
             </p>
           </div>
           <Link to="/monitors/new">
