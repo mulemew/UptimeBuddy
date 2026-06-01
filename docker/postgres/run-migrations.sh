@@ -18,4 +18,17 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
+
+-- Read-only access for the SPA / public status page (anon role).
+-- Adjust to taste if you want a fully private deployment.
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['monitors','heartbeats','incidents','maintenance_windows','app_settings']
+  LOOP
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name=t) THEN
+      EXECUTE format('GRANT SELECT ON public.%I TO anon, authenticated', t);
+    END IF;
+  END LOOP;
+END$$;
 SQL
