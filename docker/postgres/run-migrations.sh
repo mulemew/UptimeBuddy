@@ -22,12 +22,23 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role
 -- Read-only access for the SPA / public status page (anon role).
 -- Adjust to taste if you want a fully private deployment.
 DO $$
-DECLARE t text;
+DECLARE
+  t text;
+  pol_name text;
 BEGIN
   FOREACH t IN ARRAY ARRAY['monitors','heartbeats','incidents','maintenance_windows','app_settings']
   LOOP
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name=t) THEN
       EXECUTE format('GRANT SELECT ON public.%I TO anon, authenticated', t);
+      pol_name := t || '_selfhost_public_read';
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename=t AND policyname=pol_name
+      ) THEN
+        EXECUTE format(
+          'CREATE POLICY %I ON public.%I FOR SELECT TO anon, authenticated USING (true)',
+          pol_name, t
+        );
+      END IF;
     END IF;
   END LOOP;
 END$$;
