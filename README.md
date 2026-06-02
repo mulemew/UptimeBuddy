@@ -127,14 +127,11 @@ set `VITE_SUPABASE_URL=http://localhost:8000` in `.env.local`.
 
 ## CI / Releases
 
-`.github/workflows/docker.yml` builds and publishes all four UptimeBuddy
-images (`app`, `db`, `functions`, `scheduler`) to GitHub Container
-Registry for **linux/amd64** and **linux/arm64** on every push to `main`
-and every `v*` tag.
-
-To consume pre-built images instead of building locally, swap each `build:`
-key in `docker-compose.yaml` for its matching `image:` tag and run
-`docker compose pull && docker compose up -d`.
+`.github/workflows/docker.yml` builds and publishes the single
+`uptimebuddy-app` image to GitHub Container Registry for
+**linux/amd64** and **linux/arm64** on every push to `main` and every
+`v*` tag. All other services run upstream images directly, so no extra
+publishing is needed.
 
 ---
 
