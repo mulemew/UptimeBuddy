@@ -13,7 +13,7 @@ export function AppHeader() {
       <div className="container flex h-14 items-center justify-between">
         <Link to="/" className="flex items-center gap-2 font-semibold">
           <Activity className="h-5 w-5 text-primary" />
-          <span>Uptime</span>
+          <span>UptimeBuddy</span>
         </Link>
         <nav className="flex items-center gap-1 text-sm">
           <Link to="/" className="px-3 py-1.5 text-muted-foreground hover:text-foreground">{t("nav.dashboard")}</Link>
