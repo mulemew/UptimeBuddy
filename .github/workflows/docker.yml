@@ -24,15 +24,6 @@ jobs:
           - name: app
             context: .
             dockerfile: Dockerfile
-          - name: db
-            context: ./docker/postgres
-            dockerfile: ./docker/postgres/Dockerfile
-          - name: functions
-            context: ./docker/edge-runtime
-            dockerfile: ./docker/edge-runtime/Dockerfile
-          - name: scheduler
-            context: ./docker/scheduler
-            dockerfile: ./docker/scheduler/Dockerfile
     steps:
       - uses: actions/checkout@v4
 

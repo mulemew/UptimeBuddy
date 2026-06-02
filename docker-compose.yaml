@@ -3,6 +3,9 @@
 #   docker compose up -d
 #   open http://localhost:3000
 #
+# Only ONE image is custom-built (`app` = SPA bundle baked in). Everything
+# else uses official upstream images with scripts/code mounted as volumes.
+#
 # Default JWT secret + keys below are the SAME as the public Supabase demo
 # tokens. They work out of the box but are PUBLIC — set your own JWT_SECRET,
 # ANON_KEY, SERVICE_ROLE_KEY, POSTGRES_PASSWORD in production
@@ -20,9 +23,10 @@ x-shared-env: &shared-env
   PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
 
 services:
+  # Official postgres image. Bootstrap SQL + migrations are mounted into
+  # /docker-entrypoint-initdb.d and run automatically on first boot.
   db:
-    build: ./docker/postgres
-    image: ghcr.io/mulemew/uptimebuddy-db:latest
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -37,9 +41,9 @@ services:
       - max_wal_senders=10
     volumes:
       - db-data:/var/lib/postgresql/data
-      # Mount migrations — runs on first boot in alphabetical order, after 00-init.sql
-      - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations:ro
+      - ./docker/postgres/00-init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
       - ./docker/postgres/run-migrations.sh:/docker-entrypoint-initdb.d/01-run-migrations.sh:ro
+      - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -87,9 +91,10 @@ services:
       RUN_JANITOR: "true"
     networks: [internal]
 
+  # Official Supabase edge-runtime image. Functions are mounted from the repo,
+  # so updates require no rebuild — just `docker compose restart functions`.
   functions:
-    build: ./docker/edge-runtime
-    image: ghcr.io/mulemew/uptimebuddy-functions:latest
+    image: supabase/edge-runtime:v1.58.2
     restart: unless-stopped
     depends_on:
       db:
@@ -102,6 +107,7 @@ services:
       SUPABASE_DB_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/postgres
     volumes:
       - ./supabase/functions:/home/deno/functions:ro
+    command: ["start", "--main-service", "/home/deno/functions/main", "-p", "9000"]
     networks: [internal]
 
   kong:
@@ -121,6 +127,7 @@ services:
     networks: [internal]
     depends_on: [rest, realtime, functions]
 
+  # The only custom image — SPA bundle baked in, nginx runtime.
   app:
     build: .
     image: ghcr.io/mulemew/uptimebuddy-app:latest
@@ -133,13 +140,16 @@ services:
     networks: [internal]
     depends_on: [kong]
 
+  # Tiny cron loop — official alpine + curl, script mounted from repo.
   scheduler:
-    build: ./docker/scheduler
-    image: ghcr.io/mulemew/uptimebuddy-scheduler:latest
+    image: alpine:3.20
     restart: unless-stopped
     environment:
       RUN_CHECKS_URL: http://kong:8000/functions/v1/run-checks
       SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UtZGVtbyIsImlhdCI6MTY0MTc2OTIwMCwiZXhwIjoxNzk5NTM1NjAwfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q}
+    volumes:
+      - ./docker/scheduler/run.sh:/usr/local/bin/run.sh:ro
+    command: ["sh", "-c", "apk add --no-cache curl bash >/dev/null && exec bash /usr/local/bin/run.sh"]
     networks: [internal]
     depends_on: [kong]
 
