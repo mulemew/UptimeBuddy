@@ -93,17 +93,20 @@ Put it behind a reverse proxy (Caddy / Traefik / nginx) for TLS.
                                 scheduler (cron → run-checks every 60s)
 ```
 
-### Containers (all multi-arch: linux/amd64 + linux/arm64)
+### Containers
 
-| Image                                              | Purpose                       |
-| -------------------------------------------------- | ----------------------------- |
-| `ghcr.io/mulemew/uptimebuddy-app`                  | Frontend SPA + nginx          |
-| `ghcr.io/mulemew/uptimebuddy-db`                   | Postgres 16 + bootstrap       |
-| `ghcr.io/mulemew/uptimebuddy-functions`            | Edge runtime (Deno functions) |
-| `ghcr.io/mulemew/uptimebuddy-scheduler`            | 60s tick → `run-checks`       |
-| `postgrest/postgrest:v12.2.0`                      | REST over Postgres            |
-| `supabase/realtime:v2.30.34`                       | Postgres change streaming     |
-| `kong:3.4`                                         | API gateway                   |
+Only **one** image is custom-built (the SPA bundle). Everything else uses
+official upstream images with scripts/code mounted from the repo.
+
+| Image                                              | Built by us? | Purpose                       |
+| -------------------------------------------------- | ------------ | ----------------------------- |
+| `ghcr.io/mulemew/uptimebuddy-app` (multi-arch)     | yes          | Frontend SPA + nginx          |
+| `postgres:16-alpine`                               | no           | Database (init via volumes)   |
+| `postgrest/postgrest:v12.2.0`                      | no           | REST over Postgres            |
+| `supabase/realtime:v2.30.34`                       | no           | Postgres change streaming     |
+| `supabase/edge-runtime:v1.58.2`                    | no           | Deno functions (code mounted) |
+| `kong:3.4`                                         | no           | API gateway                   |
+| `alpine:3.20`                                      | no           | 60s tick → `run-checks`       |
 
 ---
 
