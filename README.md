@@ -16,7 +16,7 @@ Docker — no Lovable / Supabase account required.
 Requirements: Docker 24+ with the Compose plugin.
 
 ```bash
-git clone https://github.com/mulemew/uptimeslim.git uptimebuddy
+git clone https://github.com/mulemew/UptimeBuddy.git uptimebuddy
 cd uptimebuddy
 docker compose up -d
 ```
