@@ -3,9 +3,13 @@
 # works against any deployment URL.
 set -euo pipefail
 
-API_URL="${API_URL:-http://localhost:8000}"
+API_URL="${API_URL:-}"
 ANON_KEY="${ANON_KEY:-}"
 
+if [ -z "$API_URL" ]; then
+  echo "[entrypoint] ERROR: API_URL env var must be set (e.g. http://localhost:8000)" >&2
+  exit 1
+fi
 if [ -z "$ANON_KEY" ]; then
   echo "[entrypoint] ERROR: ANON_KEY env var must be set" >&2
   exit 1

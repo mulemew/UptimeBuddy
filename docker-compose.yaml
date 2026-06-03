@@ -8,8 +8,8 @@
 #
 # Default JWT secret + keys below are the SAME as the public Supabase demo
 # tokens. They work out of the box but are PUBLIC — set your own JWT_SECRET,
-# ANON_KEY, SERVICE_ROLE_KEY, POSTGRES_PASSWORD in production
-# (see .env.example and README.md).
+# ANON_KEY, SERVICE_ROLE_KEY, POSTGRES_PASSWORD, SECRET_KEY_BASE in
+# production (see .env.example and README.md).
 
 x-shared-env: &shared-env
   POSTGRES_HOST: db
@@ -20,7 +20,8 @@ x-shared-env: &shared-env
   JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
   ANON_KEY: ${ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE}
   SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UtZGVtbyIsImlhdCI6MTY0MTc2OTIwMCwiZXhwIjoxNzk5NTM1NjAwfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q}
-  PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
+  # PUBLIC_API_URL defaults follow KONG_PORT so the two can't drift.
+  PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:${KONG_PORT:-8000}}
 
 services:
   # Official postgres image. Bootstrap SQL + migrations are mounted into
@@ -45,10 +46,13 @@ services:
       - ./docker/postgres/run-migrations.sh:/docker-entrypoint-initdb.d/01-run-migrations.sh:ro
       - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      # Wait for run-migrations.sh to finish — it creates _uptimebuddy_ready
+      # at the very end. Dependents only start after this passes.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres && psql -U postgres -d postgres -tAc 'SELECT 1 FROM public._uptimebuddy_ready' | grep -q 1"]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 60
+      start_period: 30s
     networks: [internal]
 
   rest:
@@ -81,7 +85,7 @@ services:
       DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
       DB_ENC_KEY: supabaserealtime
       API_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
-      SECRET_KEY_BASE: UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq}
       ERL_AFLAGS: -proto_dist inet_tcp
       ENABLE_TAILSCALE: "false"
       DNS_NODES: "''"
@@ -133,23 +137,30 @@ services:
     image: ghcr.io/mulemew/uptimebuddy-app:latest
     restart: unless-stopped
     environment:
-      API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
+      API_URL: ${PUBLIC_API_URL:-http://localhost:${KONG_PORT:-8000}}
       ANON_KEY: ${ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE}
     ports:
       - "${APP_PORT:-3000}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     networks: [internal]
     depends_on: [kong]
 
-  # Tiny cron loop — official alpine + curl, script mounted from repo.
+  # Tiny cron loop — official curl image, script mounted from repo. No apk add.
   scheduler:
-    image: alpine:3.20
+    image: curlimages/curl:8.10.1
     restart: unless-stopped
+    user: "0"
+    entrypoint: ["sh", "/usr/local/bin/run.sh"]
     environment:
       RUN_CHECKS_URL: http://kong:8000/functions/v1/run-checks
       SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UtZGVtbyIsImlhdCI6MTY0MTc2OTIwMCwiZXhwIjoxNzk5NTM1NjAwfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q}
+      TICK_SECONDS: "60"
     volumes:
       - ./docker/scheduler/run.sh:/usr/local/bin/run.sh:ro
-    command: ["sh", "-c", "apk add --no-cache curl bash >/dev/null && exec bash /usr/local/bin/run.sh"]
     networks: [internal]
     depends_on: [kong]
 
