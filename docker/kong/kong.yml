@@ -1,6 +1,30 @@
 _format_version: "3.0"
 _transform: true
 
+# Shared CORS plugin config. supabase-js sends `apikey` + `x-client-info` on
+# every request; the auth function additionally sends `x-session-token`. We
+# must list these explicitly — Kong's default CORS preflight only allows a
+# tiny built-in set and would otherwise block the browser.
+_cors_config: &cors_config
+  origins: ["*"]
+  methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD]
+  headers:
+    - accept
+    - authorization
+    - content-type
+    - apikey
+    - x-client-info
+    - x-session-token
+    - x-requested-with
+    - prefer
+    - range
+  exposed_headers:
+    - content-range
+    - content-length
+    - x-total-count
+  credentials: true
+  max_age: 3600
+
 services:
   - name: rest-v1
     url: http://rest:3000/
@@ -11,6 +35,7 @@ services:
           - /rest/v1/
     plugins:
       - name: cors
+        config: *cors_config
 
   - name: realtime-v1
     url: http://realtime:4000/socket/
@@ -21,6 +46,7 @@ services:
           - /realtime/v1/
     plugins:
       - name: cors
+        config: *cors_config
 
   - name: functions-v1
     url: http://functions:9000/
@@ -31,3 +57,4 @@ services:
           - /functions/v1/
     plugins:
       - name: cors
+        config: *cors_config

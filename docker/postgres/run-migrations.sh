@@ -1,17 +1,32 @@
 #!/bin/bash
-# Runs after 00-init.sql. Applies every project migration in /docker-entrypoint-initdb.d/migrations
-# in alphabetical (= timestamp) order, then GRANTs RW on all public tables to service_role
-# (covers tables that didn't include explicit grants).
+# Runs after 00-init.sql. Steps:
+#   1. Sync authenticator role password with the runtime $POSTGRES_PASSWORD
+#      so PostgREST can log in when the user customises the password.
+#   2. Apply every project migration in /docker-entrypoint-initdb.d/migrations
+#      in alphabetical (= timestamp) order.
+#   3. GRANT RW on all public tables to service_role (covers tables whose
+#      migrations didn't include explicit grants) and open SELECT on a few
+#      well-known tables to anon for the public status page.
+#   4. Create a readiness sentinel table dependent services can poll on.
 set -e
 
+PGP="${POSTGRES_PASSWORD:-postgres}"
+
+# Step 1: sync authenticator password.
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
+  -c "ALTER ROLE authenticator WITH PASSWORD '$PGP';"
+
+# Step 2: apply migrations.
 MIG_DIR=/docker-entrypoint-initdb.d/migrations
 if [ -d "$MIG_DIR" ]; then
-  for f in $(ls "$MIG_DIR" | sort); do
-    echo "[migrations] applying $f"
-    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$MIG_DIR/$f"
+  for f in "$MIG_DIR"/*.sql; do
+    [ -e "$f" ] || continue
+    echo "[migrations] applying $(basename "$f")"
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$f"
   done
 fi
 
+# Step 3+4: grants, anon-read policies, readiness sentinel.
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<'SQL'
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
@@ -19,8 +34,6 @@ GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
 
--- Read-only access for the SPA / public status page (anon role).
--- Adjust to taste if you want a fully private deployment.
 DO $$
 DECLARE
   t text;
@@ -42,4 +55,10 @@ BEGIN
     END IF;
   END LOOP;
 END$$;
+
+CREATE TABLE IF NOT EXISTS public._uptimebuddy_ready (ready boolean PRIMARY KEY DEFAULT true);
+INSERT INTO public._uptimebuddy_ready (ready) VALUES (true) ON CONFLICT DO NOTHING;
+GRANT SELECT ON public._uptimebuddy_ready TO anon, authenticated, service_role;
 SQL
+
+echo "[migrations] done — readiness sentinel public._uptimebuddy_ready created"
