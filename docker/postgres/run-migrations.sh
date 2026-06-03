@@ -1,7 +1,7 @@
 #!/bin/bash
 # Runs after 00-init.sql. Steps:
 #   1. Sync authenticator role password with the runtime $POSTGRES_PASSWORD
-#      (so PostgREST can log in when the user customises the password).
+#      so PostgREST can log in when the user customises the password.
 #   2. Apply every project migration in /docker-entrypoint-initdb.d/migrations
 #      in alphabetical (= timestamp) order.
 #   3. GRANT RW on all public tables to service_role (covers tables whose
@@ -12,18 +12,11 @@ set -e
 
 PGP="${POSTGRES_PASSWORD:-postgres}"
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
-  -v authpw="$PGP" <<'SQL'
-\set authpw_quoted '\'' :authpw '\''
--- ALTER ROLE doesn't accept parameters; build the statement dynamically.
-SELECT format('ALTER ROLE authenticator WITH PASSWORD %L', :'authpw') \gset
-:value
-SQL
-
-# The HEREDOC trick above is fragile across psql versions; do it the simple way:
+# Step 1: sync authenticator password.
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
   -c "ALTER ROLE authenticator WITH PASSWORD '$PGP';"
 
+# Step 2: apply migrations.
 MIG_DIR=/docker-entrypoint-initdb.d/migrations
 if [ -d "$MIG_DIR" ]; then
   for f in "$MIG_DIR"/*.sql; do
@@ -33,6 +26,7 @@ if [ -d "$MIG_DIR" ]; then
   done
 fi
 
+# Step 3+4: grants, anon-read policies, readiness sentinel.
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<'SQL'
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
@@ -40,7 +34,6 @@ GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
 
--- Read-only access for the SPA / public status page (anon role).
 DO $$
 DECLARE
   t text;
@@ -63,11 +56,9 @@ BEGIN
   END LOOP;
 END$$;
 
--- Readiness sentinel: healthcheck polls this so dependents only start
--- after migrations + grants have finished.
 CREATE TABLE IF NOT EXISTS public._uptimebuddy_ready (ready boolean PRIMARY KEY DEFAULT true);
 INSERT INTO public._uptimebuddy_ready (ready) VALUES (true) ON CONFLICT DO NOTHING;
 GRANT SELECT ON public._uptimebuddy_ready TO anon, authenticated, service_role;
 SQL
 
-echo "[migrations] done — sentinel public._uptimebuddy_ready created"
+echo "[migrations] done — readiness sentinel public._uptimebuddy_ready created"
