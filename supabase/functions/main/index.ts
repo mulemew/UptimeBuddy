@@ -18,6 +18,17 @@ Deno.serve(async (req: Request) => {
   }
 
   const servicePath = `/home/deno/functions/${name}`;
+  // Whitelist only env vars functions actually need — don't leak
+  // POSTGRES_PASSWORD / JWT_SECRET / etc. to every user worker.
+  const ALLOWED_ENV = [
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_DB_URL",
+  ];
+  const envVars: [string, string][] = ALLOWED_ENV
+    .map((k) => [k, Deno.env.get(k) ?? ""] as [string, string])
+    .filter(([, v]) => v.length > 0);
   try {
     // @ts-expect-error: EdgeRuntime is injected by the supabase/edge-runtime image
     const worker = await EdgeRuntime.userWorkers.create({
@@ -25,7 +36,7 @@ Deno.serve(async (req: Request) => {
       memoryLimitMb: 256,
       workerTimeoutMs: 60_000,
       noModuleCache: false,
-      envVars: Object.entries(Deno.env.toObject()),
+      envVars,
     });
     const forwarded = new Request(
       new URL("/" + rest.join("/") + url.search, url.origin),
