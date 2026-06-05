@@ -69,6 +69,29 @@ console.log('SERVICE_ROLE_KEY='+j.sign({role:'service_role',iss:'self'},s));"
 
 Put it behind a reverse proxy (Caddy / Traefik / nginx) for TLS.
 
+### Database monitors (DSN secrets)
+
+When you add a "Database" monitor, the DSN is read from an environment
+variable on the `functions` container — **the name must start with `MON_`**
+(e.g. `MON_PROD_DB`). Add it to your `.env`:
+
+```bash
+MON_PROD_DB=postgres://user:pass@host:5432/db
+```
+
+Only `MON_*` variables are forwarded to worker isolates; platform secrets
+(JWT, service-role key, Postgres password) are never exposed to user code.
+
+### Heartbeat retention
+
+`run-checks` deletes heartbeats older than the value in
+`public._uptimebuddy_runtime` (key `heartbeats_retention_days`, default
+`90`). Change it with SQL:
+
+```sql
+UPDATE public._uptimebuddy_runtime SET val = '30' WHERE key = 'heartbeats_retention_days';
+```
+
 ---
 
 ## Architecture
