@@ -88,14 +88,23 @@ async function maybeRunRetention(sb: ReturnType<typeof adminClient>) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
+    const sb = adminClient();
     const auth = req.headers.get("Authorization") ?? "";
     const provided = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-    if (!(await isAuthorized(provided))) {
+
+    // Auth: bearer == SERVICE_ROLE_KEY (docker / manual), OR JWKS-signed JWT
+    // with role=service_role (cloud), OR matches the rotation-proof shared
+    // secret stored in public._uptimebuddy_runtime (key='cron_secret').
+    let ok = await isAuthorized(provided);
+    if (!ok && provided) {
+      const { data } = await sb.from("_uptimebuddy_runtime").select("val").eq("key", "cron_secret").maybeSingle();
+      if (data?.val && timingSafeEqual(provided, data.val)) ok = true;
+    }
+    if (!ok) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const sb = adminClient();
     const nowIso = new Date().toISOString();
 
     if (!(await acquireLock(sb))) {
