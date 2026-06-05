@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      _uptimebuddy_runtime: {
+        Row: {
+          key: string
+          ts: string
+          val: string | null
+        }
+        Insert: {
+          key: string
+          ts?: string
+          val?: string | null
+        }
+        Update: {
+          key?: string
+          ts?: string
+          val?: string | null
+        }
+        Relationships: []
+      }
       admin_account: {
         Row: {
           created_at: string
@@ -172,7 +190,15 @@ export type Database = {
           title?: string
           weekday?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_windows_monitor_id_fkey"
+            columns: ["monitor_id"]
+            isOneToOne: false
+            referencedRelation: "monitors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       monitors: {
         Row: {
