@@ -245,6 +245,9 @@ async function checkTcp(m: Monitor): Promise<CheckResult> {
   }
 }
 
+// "Ping" in the edge runtime: ICMP is not available from Deno workers, so we
+// implement reachability as an HTTPS HEAD probe instead. Any 1xx-5xx response
+// means the host answered. Label this clearly in the UI.
 async function checkPing(m: Monitor): Promise<CheckResult> {
   const host = m.target.replace(/^https?:\/\//, "").split("/")[0];
   return await checkHttp({ ...m, target: `https://${host}`, expected_status_codes: "100-599", http_method: "HEAD", keyword: null });
