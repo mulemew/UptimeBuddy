@@ -88,10 +88,9 @@ async function maybeRunRetention(sb: ReturnType<typeof adminClient>) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const expected = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const auth = req.headers.get("Authorization") ?? "";
     const provided = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-    if (!expected || !timingSafeEqual(provided, expected)) {
+    if (!(await isAuthorized(provided))) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
