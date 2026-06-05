@@ -180,8 +180,30 @@ async function checkHttp(m: Monitor): Promise<CheckResult> {
   }
 
   if (wantBody && m.keyword) {
+    // Cap body at 1MB so a giant response can't OOM the worker.
+    const MAX_BYTES = 1_048_576;
     let body = "";
-    try { body = await res.text(); } catch (_) { body = ""; }
+    try {
+      const reader = res.body?.getReader();
+      if (reader) {
+        const chunks: Uint8Array[] = [];
+        let total = 0;
+        // deno-lint-ignore no-constant-condition
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (!value) continue;
+          const take = Math.min(value.byteLength, MAX_BYTES - total);
+          chunks.push(value.subarray(0, take));
+          total += take;
+          if (total >= MAX_BYTES) { try { await reader.cancel(); } catch (_) { /* noop */ } break; }
+        }
+        const buf = new Uint8Array(total);
+        let off = 0;
+        for (const c of chunks) { buf.set(c, off); off += c.byteLength; }
+        body = new TextDecoder().decode(buf);
+      }
+    } catch (_) { body = ""; }
     const r = evaluateMatch(body, m.keyword, matchMode);
     if (!r.ok) return { status: "down", response_time_ms: elapsed, status_code: statusCode, error_message: r.reason ?? "Keyword check failed" };
   } else {
