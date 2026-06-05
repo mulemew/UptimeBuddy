@@ -129,7 +129,7 @@ official upstream images with scripts/code mounted from the repo.
 | `supabase/realtime:v2.30.34`                       | no           | Postgres change streaming     |
 | `supabase/edge-runtime:v1.58.2`                    | no           | Deno functions (code mounted) |
 | `kong:3.4`                                         | no           | API gateway                   |
-| `alpine:3.20`                                      | no           | 60s tick → `run-checks`       |
+| `curlimages/curl:8.10.1`                           | no           | 60s tick → `run-checks`       |
 
 ---
 
