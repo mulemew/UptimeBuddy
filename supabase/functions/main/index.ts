@@ -20,15 +20,22 @@ Deno.serve(async (req: Request) => {
   const servicePath = `/home/deno/functions/${name}`;
   // Whitelist only env vars functions actually need — don't leak
   // POSTGRES_PASSWORD / JWT_SECRET / etc. to every user worker.
-  const ALLOWED_ENV = [
+  const ALLOWED_ENV = new Set([
     "SUPABASE_URL",
     "SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
     "SUPABASE_DB_URL",
-  ];
-  const envVars: [string, string][] = ALLOWED_ENV
-    .map((k) => [k, Deno.env.get(k) ?? ""] as [string, string])
-    .filter(([, v]) => v.length > 0);
+  ]);
+  // Forward user-defined monitor secrets (DSNs etc.) — they must be prefixed
+  // with MON_ so we never leak unrelated platform secrets.
+  const envVars: [string, string][] = [];
+  for (const k of ALLOWED_ENV) {
+    const v = Deno.env.get(k);
+    if (v) envVars.push([k, v]);
+  }
+  for (const [k, v] of Object.entries(Deno.env.toObject())) {
+    if (k.startsWith("MON_") && v) envVars.push([k, v]);
+  }
   try {
     // @ts-expect-error: EdgeRuntime is injected by the supabase/edge-runtime image
     const worker = await EdgeRuntime.userWorkers.create({
