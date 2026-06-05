@@ -68,8 +68,12 @@ function buildSchema(t: (k: string, opts?: Record<string, unknown>) => string) {
     if (["http", "tcp", "ping", "dns"].includes(v.type) && !v.target) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["target"], message: t("monitorForm.targetRequired") });
     }
-    if (v.type === "database" && !v.db_secret_name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["db_secret_name"], message: "Required" });
+    if (v.type === "database") {
+      if (!v.db_secret_name) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["db_secret_name"], message: "Required" });
+      } else if (!/^MON_[A-Z0-9_]+$/.test(v.db_secret_name)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["db_secret_name"], message: "Must start with MON_ (e.g. MON_PROD_DB)" });
+      }
     }
     if (v.type === "multistep" && v.steps.length === 0) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["steps"], message: t("monitorForm.stepsRequired") });

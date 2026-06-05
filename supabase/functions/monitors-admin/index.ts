@@ -50,7 +50,9 @@ const MonitorPayload = z.object({
   dns_expected_values: z.array(z.string().max(500)).max(20).nullable().optional(),
   steps: z.array(StepSchema).max(20).optional(),
   db_kind: z.enum(["postgres", "mysql"]).nullable().optional(),
-  db_secret_name: z.string().max(120).nullable().optional(),
+  // DSN secrets must use the MON_ prefix so the edge router can safely forward
+  // them to worker functions (see supabase/functions/main/index.ts).
+  db_secret_name: z.string().regex(/^MON_[A-Z0-9_]+$/, "Must match MON_[A-Z0-9_]+").max(120).nullable().optional(),
   db_query: z.string().max(2000).nullable().optional(),
   push_grace_seconds: z.number().int().min(5).max(86400).optional(),
 });
