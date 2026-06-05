@@ -1,4 +1,5 @@
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+import { jwtVerify, createLocalJWKSet, type JWTPayload } from "https://deno.land/x/jose@v5.9.6/index.ts";
 import { adminClient, persistResult } from "../_shared/persist.ts";
 import { runCheck, type Monitor } from "../_shared/checkers.ts";
 import { getActiveMaintenanceMonitorIds, isInMaintenance } from "../_shared/maintenance.ts";
@@ -13,6 +14,31 @@ function timingSafeEqual(a: string, b: string): boolean {
   let r = 0;
   for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return r === 0;
+}
+
+// Lazy JWKS — populated in Lovable Cloud (signing-keys system); empty in
+// self-hosted docker, in which case we fall back to plain SRK equality.
+let jwks: ReturnType<typeof createLocalJWKSet> | null = null;
+function getJwks() {
+  if (jwks) return jwks;
+  const raw = Deno.env.get("SUPABASE_JWKS");
+  if (!raw) return null;
+  try { jwks = createLocalJWKSet(JSON.parse(raw)); return jwks; } catch { return null; }
+}
+
+// Accept (a) bearer == SUPABASE_SERVICE_ROLE_KEY (docker / explicit callers),
+// or (b) a JWT signed by the project's JWKS with role=service_role — keeps
+// pg_cron working after platform key rotation in cloud.
+async function isAuthorized(token: string): Promise<boolean> {
+  if (!token) return false;
+  const expected = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (expected && timingSafeEqual(token, expected)) return true;
+  const ks = getJwks();
+  if (!ks) return false;
+  try {
+    const { payload } = await jwtVerify(token, ks) as { payload: JWTPayload & { role?: string } };
+    return payload.role === "service_role";
+  } catch { return false; }
 }
 
 // Tiny p-limit-style helper — caps in-flight async work to N.
