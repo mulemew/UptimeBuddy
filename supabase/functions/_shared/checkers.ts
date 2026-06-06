@@ -249,9 +249,62 @@ async function checkTcp(m: Monitor): Promise<CheckResult> {
 // implement reachability as an HTTPS HEAD probe instead. Any 1xx-5xx response
 // means the host answered. Label this clearly in the UI.
 async function checkPing(m: Monitor): Promise<CheckResult> {
-  const host = m.target.replace(/^https?:\/\//, "").split("/")[0];
-  return await checkHttp({ ...m, target: `https://${host}`, expected_status_codes: "100-599", http_method: "HEAD", keyword: null });
+  const start = performance.now();
+  const host = m.target.replace(/^https?:\/\//, "").split("/")[0].split(":")[0];
+  if (!host) {
+    return { status: "down", response_time_ms: 0, status_code: null, error_message: "Empty hostname" };
+  }
+  try {
+    assertSafeHostname(host);
+  } catch (e) {
+    return { status: "down", response_time_ms: 0, status_code: null, error_message: (e as Error).message };
+  }
+  // Detect IPv6 literal to pick the right binary; otherwise let `ping`
+  // resolve and choose. `-c 1` one echo, `-W <sec>` per-reply timeout.
+  const isV6 = host.includes(":");
+  const bin = isV6 ? "ping6" : "ping";
+  const timeoutSec = Math.max(1, Math.min(m.timeout_seconds, 30));
+  const args = ["-c", "1", "-W", String(timeoutSec), "-n", "-q", host];
+  try {
+    const cmd = new Deno.Command(bin, {
+      args,
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const proc = cmd.spawn();
+    const killer = setTimeout(() => { try { proc.kill("SIGKILL"); } catch { /* ignore */ } }, (timeoutSec + 2) * 1000);
+    const { code, stdout, stderr } = await proc.output();
+    clearTimeout(killer);
+    const elapsed = Math.round(performance.now() - start);
+    const out = new TextDecoder().decode(stdout);
+    const err = new TextDecoder().decode(stderr).trim();
+    if (code !== 0) {
+      // Common causes: 100% packet loss, name resolution failure, missing
+      // CAP_NET_RAW. Surface stderr (or the last meaningful stdout line) so
+      // the user can diagnose. Hosted/restricted runtimes will land here.
+      const msg = err || out.split("\n").filter(Boolean).slice(-1)[0] || `ping exited with code ${code}`;
+      return { status: "down", response_time_ms: elapsed, status_code: null, error_message: msg.slice(0, 500) };
+    }
+    // Parse RTT from "rtt min/avg/max/mdev = 1.234/1.234/1.234/0.000 ms"
+    const rttMatch = out.match(/=\s*[\d.]+\/([\d.]+)\/[\d.]+\/[\d.]+\s*ms/);
+    const rtt = rttMatch ? Math.round(parseFloat(rttMatch[1])) : elapsed;
+    let status: CheckResult["status"] = "up";
+    if (m.degraded_threshold_ms && rtt > m.degraded_threshold_ms) status = "degraded";
+    return { status, response_time_ms: rtt, status_code: null, error_message: null };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // NotFound = ping binary missing (hosted edge runtime, or self-host
+    // without our custom image). PermissionDenied = no --allow-run / no
+    // CAP_NET_RAW. Both are user-facing actionable errors.
+    return {
+      status: "down",
+      response_time_ms: Math.round(performance.now() - start),
+      status_code: null,
+      error_message: `ICMP ping unavailable: ${msg}`,
+    };
+  }
 }
+
 
 async function checkDns(m: Monitor): Promise<CheckResult> {
   const start = performance.now();
