@@ -98,8 +98,14 @@ services:
   # Official Supabase edge-runtime image. Functions are mounted from the repo,
   # so updates require no rebuild — just `docker compose restart functions`.
   functions:
-    image: supabase/edge-runtime:v1.58.2
+    build:
+      context: .
+      dockerfile: docker/edge-runtime/Dockerfile
+    image: uptimebuddy/edge-runtime:local
     restart: unless-stopped
+    # Needed for real ICMP ping in the `ping` monitor type.
+    cap_add:
+      - NET_RAW
     depends_on:
       db:
         condition: service_healthy
@@ -113,6 +119,7 @@ services:
       - ./supabase/functions:/home/deno/functions:ro
     command: ["start", "--main-service", "/home/deno/functions/main", "-p", "9000"]
     networks: [internal]
+
 
   kong:
     image: kong:3.4
