@@ -1,0 +1,17 @@
+{
+  "name": "@uptimebuddy/checker-core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Runtime-agnostic monitor check logic. Consumed by CF Workers and Node worker adapters.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./checkers": "./src/checkers/index.ts",
+    "./scheduler": "./src/scheduler.ts",
+    "./persist": "./src/persist.ts"
+  },
+  "sideEffects": false,
+  "license": "MIT"
+}
