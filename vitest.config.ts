@@ -12,7 +12,6 @@ export default defineConfig({
       "src/**/*.{test,spec}.{ts,tsx}",
       "packages/*/tests/**/*.{test,spec}.ts",
     ],
-    projects: undefined,
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
