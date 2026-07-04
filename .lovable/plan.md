@@ -1,107 +1,97 @@
-## 目标
+# 方案 C+：checker-core 双运行时
 
-为监控系统新增 7 项能力：抖动重试、维护窗口、DNS 监控、多步 API 监控、远程数据库监控、被动心跳（Cron 监控）、历史曲线图断点处理。
+目标：一份检查逻辑，既能在 Cloudflare Workers 跑（0 容器，全球多点），也能在自托管环境跑（保留真 ICMP ping）。用户按需二选一部署。
 
----
+分支：`feat/checker-core-dual-runtime`（在本次实现开始时创建）。
 
-## 1. 故障重试（防抖）
+## 目录结构
 
-`monitors` 新增 `retry_count int default 0`、`retry_interval_seconds int default 20`。
+```text
+packages/
+  checker-core/           # 纯逻辑，零运行时依赖
+    src/
+      types.ts            # Monitor / CheckResult / RuntimeCaps
+      checkers/
+        http.ts           # fetch-based，两端通用
+        tcp.ts            # 用 caps.tcpConnect 抽象
+        ping.ts           # 用 caps.icmpPing 抽象（CF 端不注入 => 报错）
+        dns.ts            # 用 caps.dnsResolve 抽象
+        multistep.ts
+        database.ts       # 用 caps.dbQuery（CF 端可选 HTTP 代理或禁用）
+      persist.ts          # 通过 caps.db 写 heartbeats/incidents/monitors
+      scheduler.ts        # 选出到期 monitors、并发调度、维护窗判定
+      maintenance.ts
+      lock.ts             # 复用 _uptimebuddy_runtime 的锁
+    package.json          # "type": "module"，无 deno/node 专属 import
 
-`run-checks` / `check-now` 检查到 `down` 时，立即在内存里串行重试 `retry_count` 次（每次间隔 `retry_interval_seconds`）。全部失败才落 `down` 心跳并开事件；任何一次成功则按成功结果落库（不开事件）。`degraded` 不参与重试。
-
-UI：MonitorForm 高级面板新增"失败重试次数"+"重试间隔(秒)"。
-
----
-
-## 2. 维护窗口
-
-新表 `maintenance_windows`：
-- `id, monitor_id (nullable=全局), title, starts_at timestamptz, ends_at timestamptz, recurrence text default 'none'`（none/daily/weekly）, `weekday int null`, `created_at`。
-- RLS：public read（状态页展示），写操作走 `monitors-admin` 新增 action `maintenance.*`。
-
-调度时：进入窗口的监控**跳过检查**（不写心跳、不开事件），UI 在 MonitorCard / 状态页显示"维护中"徽章。
-
-新页面 `Settings` 增加"维护窗口"标签页（或独立 `/maintenance` 路由），列表 + 新增/编辑/删除。
-
----
-
-## 3. DNS 监控
-
-`monitor_type` enum 新增 `dns`。`monitors` 新增：
-- `dns_record_type text`（A/AAAA/CNAME/MX/TXT/NS）
-- `dns_resolver text null`（默认系统）
-- `dns_expected_values text[] null`（任一匹配即 up；空则只校验"能解析"）
-
-`checkers.ts` 新增 `checkDns`，使用 `Deno.resolveDns(host, type, { nameServer })`。匹配模式：所有期望值需出现在结果中（或单个匹配，按 `match_mode`）。失败/超时 → down。
-
-UI：MonitorForm 当 type=dns 时显示记录类型 / 解析器 / 期望值多行输入。
-
----
-
-## 4. 多步 API 监控
-
-`monitor_type` enum 新增 `multistep`。`monitors` 新增 `steps jsonb default '[]'`，每步：
+adapters/
+  cloudflare/             # CF Workers 部署包
+    src/worker.ts         # scheduled() + fetch() 入口，注入 caps
+    src/caps.ts           # tcpConnect: cloudflare:sockets, dns: DoH,
+                          # db: postgres.js over Hyperdrive 或 Supabase REST
+                          # icmpPing: 抛 "unsupported in CF Workers"
+    wrangler.toml         # cron "* * * * *"，secrets: SUPABASE_URL/SRK/CRON_SECRET
+    README.md             # 部署步骤
+  node-worker/            # 自托管精简 worker（可选替代 edge-runtime）
+    src/index.ts          # setInterval 60s，注入 caps
+    src/caps.ts           # tcpConnect: net.Socket, icmpPing: 调 /bin/ping,
+                          # dns: dns/promises, db: pg
+    Dockerfile            # 基于 node:20-slim + iputils-ping + setcap
+    package.json
 ```
-{ name, method, url, headers, body, body_type,
-  expected_status_codes, extract: [{name, from:"json"|"header", path}],
-  assert: [{path, op:"eq"|"contains"|"regex", value}] }
+
+## 关键设计
+
+**RuntimeCaps 接口**：核心不 import 任何运行时 API，全部通过注入。
+```ts
+interface RuntimeCaps {
+  fetch: typeof fetch;
+  tcpConnect(host: string, port: number, timeoutMs: number): Promise<number>;
+  icmpPing?(host: string, timeoutMs: number): Promise<{ rttMs: number }>;
+  dnsResolve(host: string, type: string, resolver?: string): Promise<string[]>;
+  dbQuery?(kind: string, dsn: string, sql: string, timeoutMs: number): Promise<unknown>;
+  now(): number;
+  db: { // 用于读 monitors / 写 heartbeats
+    from(table: string): QueryBuilder;
+  };
+}
 ```
-变量替换 `{{var}}` 在 url/headers/body 中生效，由前一步 `extract` 写入上下文。
+CF 不实现 `icmpPing` → `checkers/ping.ts` 返回 `down` + `"ICMP unavailable in this runtime"`；Node worker 实现它。
 
-`checkers.ts` 新增 `checkMultiStep`：顺序执行，任一步失败即 down 并记录步骤名 + 原因；累计耗时为 `response_time_ms`。
+**数据库**：
+- 自托管：直连 Postgres（`pg`）。
+- CF Workers：走 Supabase REST（复用现有 `@supabase/supabase-js`，CF Workers 兼容）或 Hyperdrive+`postgres.js`。默认前者，零额外配置。
 
-UI：新增 `MultiStepEditor` 子组件（步骤增删 + 折叠卡片），仅在 type=multistep 时渲染。
+**锁与调度**：沿用 `_uptimebuddy_runtime` 表 + `cron_secret`。CF 用 Cron Triggers 每分钟触发 `scheduled()`，Node worker 用 `setInterval`。两者都调用 `packages/checker-core` 的 `scheduler.tick(caps)`。
 
-SSRF 守卫复用 `assertSafeUrl`。
+**现有 edge function 保留**：`supabase/functions/run-checks` 改成薄壳，import `packages/checker-core` 并注入 Deno 版 caps（`Deno.connect` / `Deno.Command("ping")` / `Deno.resolveDns`）。这样 Lovable Cloud 用户零改动继续用；自托管用户可选保留 edge-runtime 或切换到 node-worker。
 
----
+## 部署矩阵
 
-## 5. 远程数据库监控
+| 场景 | 部署 | ICMP ping | 容器数 |
+|---|---|---|---|
+| Lovable Cloud | 现状 edge function（薄壳版） | ❌ | 0（托管） |
+| 自托管 + edge-runtime | 现状 docker-compose | ✅ | 7 |
+| 自托管 + node-worker | 新增精简 compose（db+app+worker） | ✅ | 3 |
+| CF Workers + 云 DB | `wrangler deploy` | ❌ | 0 |
 
-`monitor_type` enum 新增 `database`。新增 `db_kind text`（postgres/mysql）、`db_dsn text`（密文存储——存项目 secret 引用名而不是明文：字段存 `db_secret_name`，真实 DSN 在 Supabase Secrets 里）、`db_query text default 'SELECT 1'`。
+## 实现步骤
 
-`checkers.ts` 新增 `checkDatabase`：根据 `db_kind` 用 `npm:postgres` / `npm:mysql2` 连接并执行查询，校验返回行数 ≥ 1。SSRF 守卫校验主机不在私网（与现有 ssrf.ts 复用）。
+1. `git checkout -b feat/checker-core-dual-runtime`
+2. 建 `packages/checker-core`，从 `supabase/functions/_shared/checkers.ts` 抽出纯逻辑，把所有 `Deno.*` / `fetch` 替换成 `caps.*`
+3. 建 `adapters/cloudflare/`，写 `wrangler.toml`（cron + secrets）、`worker.ts`、CF 版 caps
+4. 建 `adapters/node-worker/`，Dockerfile 装 `iputils-ping` + setcap，Node caps 用 `net`/`dgram`/`child_process`
+5. 改 `supabase/functions/run-checks/index.ts` 为薄壳，注入 Deno caps；`_shared/checkers.ts` 保留导出以兼容 `check-now`
+6. 新增 `docker-compose.slim.yaml`（仅 db+app+node-worker，供想要精简自托管的用户）
+7. 更新 `README.md`：三种部署路径的选择指南
 
-UI：MonitorForm 当 type=database 时显示 DSN secret 名称选择 + 测试 SQL。文档提示用户先在 Cloud Secrets 添加 `MON_DB_<NAME>` 形式的密钥。
+## 验收
+- `bun run build` 通过；`bunx vitest run` 现有测试通过
+- 为 `checker-core` 加最小单测（用 mock caps 跑 http/tcp/ping 三种）
+- CF adapter `wrangler deploy --dry-run` 通过
+- node-worker Dockerfile 本地 `docker build` 成功，容器内 `ping` 有 cap_net_raw
 
----
-
-## 6. 被动心跳 (Push Monitor)
-
-`monitor_type` enum 新增 `push`。`monitors` 新增：
-- `push_token text unique`（创建时自动生成 32 字节 hex）
-- `push_grace_seconds int default 60`（在 `interval_minutes*60 + grace` 内未收到即判 down）
-
-新边缘函数 `heartbeat-ingest`（公开，不验 JWT）：`GET/POST /heartbeat-ingest?token=xxx[&status=up|down][&msg=...]` → 写心跳 status=up，更新 `last_checked_at`。
-
-`run-checks` 对 `type=push` 的监控不主动探测，但每轮检查 `now - last_checked_at > interval+grace` 则写入一条 `down` 心跳并开事件（仅当上一状态非 down，避免重复）。
-
-UI：MonitorForm type=push 显示生成的 webhook URL（带复制按钮）+ grace 输入。Detail 页同样展示 URL。
-
----
-
-## 7. 历史曲线断点
-
-当前 `MonitorDetail` 用 recharts `Line` 直接连点，暂停期会被拉成横线。
-
-修改：在数据准备阶段，按时间排序后扫描相邻点，若 `Δt > interval_minutes * 2`（或监控被禁用 / 在维护窗口内），插入 `{ checked_at, response_time_ms: null }`。recharts `Line` 默认 `connectNulls={false}`，断开渲染。同时在 `Area` 图（如有）做同样处理。
-
----
-
-## 技术细节小结
-
-- DB 迁移合并为 1 个 SQL：扩 enum、加列、建 `maintenance_windows`、RLS 调整。
-- `monitors-admin` 函数扩展 actions：`maintenance.create/update/delete`、`push.regenerate_token`。
-- `checkers.ts` 拆分：`http.ts` / `dns.ts` / `db.ts` / `multistep.ts` / `push.ts`，统一 `runCheck` dispatcher。
-- 重试逻辑放在 `persist.ts` 调用前的 wrapper 中。
-- i18n：新增所有新字段的中英文键。
-- 设计系统不变；维护中徽章复用 `--status-degraded` 加斜杠纹理或新 `--status-maintenance` token（蓝灰色）。
-
-## 范围之外
-
-- 多步 API 的 GraphQL / gRPC
-- DNS DNSSEC 校验
-- 数据库连接池、读写延迟分桶
-- 维护窗口的复杂 cron 表达式（仅支持 none/daily/weekly）
-- 心跳的签名校验（仅 token）
+## 不做的事
+- 不删除现有 `docker-compose.yaml` 或 edge function（避免破坏现有用户）
+- 不改前端和数据库 schema
+- 不做 CF Workers 上的 database 类型 monitor 的复杂 DSN 代理（先直接标记为 "需自托管"）

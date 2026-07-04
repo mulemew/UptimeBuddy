@@ -9,7 +9,23 @@ PostgREST + Realtime + Deno edge functions** on the backend. Originally
 generated with [Lovable](https://lovable.dev); now runnable anywhere with
 Docker — no Lovable / Supabase account required.
 
+## Deployment options
+
+Pick the runtime that matches how much operational surface you want.
+
+| Path | Containers | Real ICMP ping | Multi-region | Best for |
+|---|---|---|---|---|
+| **Lovable Cloud** | 0 (managed) | ❌ | ❌ | Zero-ops trial and small teams |
+| **Self-hosted docker compose** (this repo, default) | 7 | ✅ | ❌ | Full control, single VPS |
+| **Cloudflare Workers** (`adapters/cloudflare`) | 0 | ❌ | ✅ | 200+ PoP checks, no infra |
+| **Custom Node worker** (`adapters/node-worker`) | 1 extra | ✅ | ❌ | Slim self-host, real ping |
+
+The check logic itself lives in `packages/checker-core` and is shared by
+all runtimes — one bug fix, three deploy targets. See each adapter's
+`README.md` for deploy steps.
+
 ---
+
 
 ## One-click self-host
 

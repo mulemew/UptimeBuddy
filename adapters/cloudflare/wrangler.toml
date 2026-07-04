@@ -1,0 +1,20 @@
+name = "uptimebuddy-checker"
+main = "src/worker.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Runs the scheduled() handler every minute. UptimeBuddy's minimum monitor
+# interval is 1 minute, so this matches the self-hosted pg_cron cadence.
+[triggers]
+crons = ["* * * * *"]
+
+# Secrets — set via `wrangler secret put <NAME>`:
+#   SUPABASE_URL              e.g. https://xxx.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY the service_role JWT
+#   CRON_SECRET               (optional) matches _uptimebuddy_runtime.cron_secret
+#
+# Optional vars — set via [vars] below or `wrangler secret put`:
+#   CONCURRENCY               default 20
+
+[vars]
+CONCURRENCY = "20"
